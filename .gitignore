@@ -1,0 +1,59 @@
+# Dependências
+node_modules/
+
+# Build e distribuição (electron-vite / electron-builder)
+out/
+dist/
+release/
+*.tsbuildinfo
+
+# Banco de dados local e arquivos do SQLite (dados do usuário)
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# Segredos e variáveis de ambiente (tokens nunca no repositório)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.cer
+
+# Logs
+*.log
+npm-debug.log*
+logs/
+
+# Testes e cobertura
+coverage/
+.vitest-cache/
+
+# Caches de ferramentas
+.eslintcache
+.cache/
+.vite/
+.parcel-cache/
+.tmp/
+*.tmp
+
+# Editores e IDEs (mantém configurações compartilháveis)
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/launch.json
+*.swp
+*~
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Claude Code (configurações locais; CLAUDE.md continua versionado)
+.claude/settings.local.json
