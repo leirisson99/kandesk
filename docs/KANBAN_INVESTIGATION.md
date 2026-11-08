@@ -39,6 +39,9 @@ Marque quando respondida e registre a fonte na seção 11.
 - [ ] Há limite de requisições (rate limit)?
 - [ ] A rede interna exige **VPN**, proxy ou certificado próprio?
 - [ ] Como identificar "tarefas atribuídas a mim" (para os alertas futuros)?
+- [ ] A resposta traz a **data da última mudança de status** (ou um histórico de status)?
+- [ ] Dá para **filtrar os cards do usuário logado** (campo de responsável ou filtro na API)?
+- [ ] A extensão **já lê os status dos cards** hoje? Por API ou pela tela (DOM)?
 
 ## 3. Como coletar as informações (segunda-feira)
 
@@ -129,6 +132,22 @@ Campos observados na resposta da API e como mapeiam para o nosso `Task`
 - Pausar uma tarefa já pausada: erro ou sucesso silencioso? `[A CONFIRMAR]`
 - Quem pode pausar (só o responsável? qualquer um?): `[A CONFIRMAR]`
 
+### 7.3 Dados para o alerta de "card parado" (monitoramento)
+O alerta "card há muito tempo no mesmo status" depende destes dados. Marque o que a API/extensão fornece:
+
+| Dado | Existe? | Campo / fonte | Observação |
+|---|---|---|---|
+| Data da última mudança de status (ex.: `statusChangedAt`) | `[A CONFIRMAR]` | | Com ele o tempo parado é **exato**. |
+| Histórico de status (lista de transições com data) | `[A CONFIRMAR]` | | Alternativa ao campo acima. |
+| Data de última atualização genérica (`updatedAt`) | `[A CONFIRMAR]` | | **Não serve sozinha**: muda com comentários, edições etc., não só com o status. |
+| Responsável do card | `[A CONFIRMAR]` | | Necessário para monitorar só "os meus". |
+| Filtro "meus cards" (na API ou na página) | `[A CONFIRMAR]` | | |
+| Coluna/etapa do quadro, além do status | `[A CONFIRMAR]` | | Pode ser a base de limites diferentes por etapa. |
+
+**Sem data de mudança de status**, o app só sabe quando **viu** o card naquele status pela primeira vez.
+O tempo parado vira uma estimativa e se perde se o app ou o Chrome ficarem fechados por dias.
+Registrar essa limitação se for o caso.
+
 ## 8. Erros, limites e rede
 
 | Item | Valor |
@@ -148,8 +167,32 @@ Campos observados na resposta da API e como mapeiam para o nosso `Task`
 - [ ] **Tokens:** um só ou separados por escopo (leitura para alertas, escrita para ações).
 - [ ] **Estado antes/depois da ação:** conseguimos confirmar o resultado? (evita duplicidade)
 - [ ] Se for ponte: canal escolhido (WebSocket local ou Native Messaging) e protocolo de mensagens.
+- [ ] **Monitoramento de cards parados:** a extensão lê e envia ao app (o app guarda o histórico e decide
+  o alerta) **ou** o app consulta a API diretamente. Ver 9.1.
 
 Registrar a decisão final e o motivo no PRD/ARCHITECTURE.
+
+### 9.1 Alerta de "card parado": como seria e o que decidir
+Viabilidade: **possível**. A extensão lê os cards (status, responsável, data) e envia as mudanças ao app por um
+canal local autenticado; o app guarda o histórico, aplica a regra e dispara a notificação do sistema.
+A **regra** (limite de tempo) e a **notificação** ficam no app, configuráveis em Configurações.
+
+Decisões de produto pendentes (não definir sem validar com quem usa):
+- [ ] O que é "parado": mesmo status por quantas horas/dias?
+- [ ] O limite é igual para todas as etapas ou **por status** (ex.: "Em revisão" tolera mais)?
+- [ ] Conta só **horário comercial**?
+- [ ] Cards que **nós mesmos pausamos** (automação) não devem gerar alerta.
+- [ ] Anti-spam: no máximo um alerta por card e por período; opção de **adiar**.
+- [ ] Quais cards: só os atribuídos ao usuário ou também os que ele acompanha?
+
+Limitações a respeitar:
+- Via extensão, só funciona com o **Chrome aberto e logado**, com a extensão ativa. Fechou o navegador, para de monitorar
+  (aceitável para alertas; ruim para ações agendadas).
+- Extensão Manifest V3 consulta com `chrome.alarms` (a partir de ~1 min) e o service worker hiberna: não é tempo real.
+- Títulos e responsáveis dos cards passam pelo canal local, que precisa de autenticação (token de pareamento,
+  `Origin` da extensão e escuta apenas em `127.0.0.1`).
+- Se a API puder ser chamada direto com token, o próprio app monitora **sem extensão** e com o Chrome fechado.
+- Item já registrado no backlog de `docs/ROADMAP.md` e descrito em `docs/alert.md`.
 
 ## 10. Impacto no código
 
@@ -164,6 +207,8 @@ Onde cada descoberta entra, para não reescrever telas:
 | Erros 401/403/expiração | Mensagens de falha de autenticação e a preferência "Falha de autenticação" |
 | Rate limit/timeout/retentativas | Política no executor de ocorrências (retentativas limitadas, sem execução atrasada) |
 | Campo de responsável | Alertas de card novo (backlog) |
+| Data de mudança de status / histórico | Regra de "card parado" (alerta no app); sem ela o tempo é estimado |
+| Canal extensão → app (se adotado) | Nova porta de entrada na infraestrutura (servidor local) e `ExtensionBridge`; a regra de alerta fica na camada de aplicação |
 
 A troca do mock pela integração real deve **não exigir mudanças** nas telas nem nos casos de uso.
 
@@ -208,3 +253,5 @@ Cole aqui exemplos reais com tudo sensível substituído. Um bloco por operaçã
 | API não informa o estado atual | Maior risco de ação duplicada | Limitar retentativas; definir contrato |
 | Extensão manipula a página em vez de usar API | Sem contrato a consumir | Rever escopo do projeto |
 | Dados pessoais em exemplos de resposta | Vazamento em repositório | Sanitizar antes de registrar aqui |
+| Sem data de mudança de status | Alerta de "card parado" impreciso (estimado) | Confirmar em 7.3; documentar a limitação |
+| Monitoramento depende do Chrome aberto | Alertas deixam de chegar com o navegador fechado | Preferir a API direta se disponível |
