@@ -29,7 +29,8 @@ como listar tarefas. - \[ \] Confirmar operações de pausa e retomada. -
 expiração e renovação do token. - \[ \] Confirmar autorização interna
 para o piloto. - \[ \] Definir versões alvo de Windows, macOS e Ubuntu.
 
-Entregáveis: - Contrato da API documentado. - Lista de riscos e
+Entregáveis: - Contrato da API documentado (roteiro e registro em
+`docs/KANBAN_INVESTIGATION.md`). - Lista de riscos e
 dependências. - Critérios técnicos de aceite confirmados.
 
 Critério de saída: equipe consegue autenticar e executar uma operação de
