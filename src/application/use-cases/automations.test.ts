@@ -21,11 +21,19 @@ class InMemoryAutomations implements AutomationRepository {
   }
 }
 
+const task = {
+  id: 'KB-1',
+  title: 'Tarefa',
+  column: 'EM DESENVOLVIMENTO',
+  projectName: 'Sprint',
+  assignee: null,
+  movedAt: null,
+};
 const tasks: TaskRepository = {
-  findAll: async () => [{ id: 'KB-1', title: 'Tarefa' }],
-  findById: async (id) => (id === 'KB-1' ? { id, title: 'Tarefa' } : null),
-  pause: async () => ({ outcome: 'APPLIED', message: '', httpStatus: null, simulated: true }),
-  resume: async () => ({ outcome: 'APPLIED', message: '', httpStatus: null, simulated: true }),
+  findAll: async () => [task],
+  findById: async (id) => (id === 'KB-1' ? { ...task, id } : null),
+  pause: async () => ({ outcome: 'APPLIED', message: '', httpStatus: null }),
+  resume: async () => ({ outcome: 'APPLIED', message: '', httpStatus: null }),
 };
 
 const input = {
@@ -54,6 +62,7 @@ describe('automation use cases', () => {
       tasks,
       clock: { now: () => time },
       ids: { next: () => `id-${++n}` },
+      pauseSupported: true,
       onChange: () => void changes++,
     });
   });
@@ -103,5 +112,37 @@ describe('automation use cases', () => {
     await useCases.setEnabled(created.id, false);
     await useCases.remove(created.id);
     expect(changes).toBe(4);
+  });
+});
+
+describe('versão de avaliação (sem pausa real)', () => {
+  const build = () => {
+    const repo = new InMemoryAutomations();
+    const useCases = createAutomationUseCases({
+      automations: repo,
+      tasks,
+      clock: { now: () => new Date('2026-11-07T12:00:00.000Z') },
+      ids: { next: () => 'id-1' },
+      pauseSupported: false,
+    });
+    return { repo, useCases };
+  };
+
+  it('bloqueia criar, editar e ativar', async () => {
+    const { repo, useCases } = build();
+    await expect(useCases.create(input)).rejects.toBeInstanceOf(DomainError);
+    expect(repo.items.size).toBe(0);
+
+    repo.items.set('a1', { ...input, id: 'a1', enabled: false } as never);
+    await expect(useCases.update('a1', input)).rejects.toBeInstanceOf(DomainError);
+    await expect(useCases.setEnabled('a1', true)).rejects.toBeInstanceOf(DomainError);
+  });
+
+  it('permite desativar e excluir o que já existia', async () => {
+    const { repo, useCases } = build();
+    repo.items.set('a1', { ...input, id: 'a1', enabled: true } as never);
+    expect((await useCases.setEnabled('a1', false)).enabled).toBe(false);
+    await useCases.remove('a1');
+    expect(repo.items.size).toBe(0);
   });
 });

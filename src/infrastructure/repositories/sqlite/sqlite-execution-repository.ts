@@ -22,7 +22,6 @@ export class SqliteExecutionRepository implements ExecutionRepository {
         executedAt: row.executed_at,
         httpStatus: row.http_status,
         message: row.message,
-        simulated: row.simulated === 1,
       }),
     );
   }
@@ -32,8 +31,8 @@ export class SqliteExecutionRepository implements ExecutionRepository {
       .prepare(
         `INSERT INTO executions
            (id, automation_id, automation_name, task_id, action, status, scheduled_for,
-            executed_at, http_status, message, simulated)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            executed_at, http_status, message)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         r.id,
@@ -46,7 +45,6 @@ export class SqliteExecutionRepository implements ExecutionRepository {
         r.executedAt,
         r.httpStatus,
         r.message,
-        r.simulated ? 1 : 0,
       );
   }
 

@@ -42,6 +42,10 @@ export type AutomationInput = z.infer<typeof automationInputSchema>;
 export const taskSchema: z.ZodType<Task> = z.object({
   id: z.string().min(1),
   title: z.string().min(1),
+  column: z.string(),
+  projectName: z.string(),
+  assignee: z.string().nullable(),
+  movedAt: isoSchema.nullable(),
 });
 
 export const automationSchema: z.ZodType<Automation> = automationFields.extend({
@@ -62,5 +66,4 @@ export const executionRecordSchema: z.ZodType<ExecutionRecord> = z.object({
   executedAt: isoSchema,
   httpStatus: z.number().int().nullable(),
   message: z.string(),
-  simulated: z.boolean(),
 });

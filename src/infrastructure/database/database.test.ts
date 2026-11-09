@@ -7,7 +7,6 @@ import { SqliteExecutionRepository } from '../repositories/sqlite/sqlite-executi
 import { SqliteSchedulerStateStore } from '../repositories/sqlite/sqlite-scheduler-state-store';
 import { SqlitePreferencesRepository } from '../repositories/sqlite/sqlite-preferences-repository';
 import { MIGRATIONS, runMigrations } from './migrations';
-import { seedDemoData } from './seed-demo';
 
 const automation: Automation = {
   id: 'a1',
@@ -75,7 +74,6 @@ describe('SqliteExecutionRepository', () => {
       executedAt: '2026-11-07T12:00:00.000Z',
       httpStatus: 200,
       message: 'ok',
-      simulated: true,
     };
     await repo.add(base);
     await repo.add({
@@ -88,7 +86,7 @@ describe('SqliteExecutionRepository', () => {
     const all = await repo.findAll();
     expect(all.map((e) => e.id)).toEqual(['e2', 'e1']);
     expect(all[0]?.httpStatus).toBeNull();
-    expect(all[1]?.simulated).toBe(true);
+    expect(all[1]?.message).toBe('ok');
   });
 });
 
@@ -106,7 +104,6 @@ describe('ocorrência única', () => {
       executedAt: '2026-11-09T15:00:00.100Z',
       httpStatus: null,
       message: 'ok',
-      simulated: true,
     };
     expect(await repo.existsFor('a1', 'PAUSE', record.scheduledFor)).toBe(false);
     await repo.add(record);
@@ -149,19 +146,52 @@ describe('SqliteSchedulerStateStore', () => {
   });
 });
 
-describe('seedDemoData', () => {
-  it('semeia uma única vez, marcando o histórico como simulado', async () => {
-    const automations = new SqliteAutomationRepository(db);
-    const executions = new SqliteExecutionRepository(db);
-    const clock = { now: () => new Date('2026-11-07T20:00:00.000Z') };
+describe('migração 3 (limpeza da demonstração)', () => {
+  it('remove os registros demo-*, preserva os do usuário e descarta a coluna simulated', () => {
+    const old = new DatabaseSync(':memory:');
+    runMigrations(old, MIGRATIONS.slice(0, 2));
+    const automationRow = (id: string) =>
+      old
+        .prepare(
+          `INSERT INTO automations VALUES (?, 'n', 'KB-1', '12:00', '13:00', '[1]', 'UTC', 1, 'x', 'x', NULL)`,
+        )
+        .run(id);
+    const executionRow = (id: string, automationId: string) =>
+      old
+        .prepare(
+          `INSERT INTO executions VALUES (?, ?, 'n', 'KB-1', 'PAUSE', 'SUCCESS', 'x', NULL, 'ok', 1, ?)`,
+        )
+        .run(id, automationId, id);
+    automationRow('demo-a1');
+    automationRow('real-1');
+    executionRow('demo-e1', 'demo-a1');
+    executionRow('real-e1', 'real-1');
+    old.prepare("INSERT INTO app_meta VALUES ('demo_seeded', 'x'), ('outra', 'y')").run();
 
-    await seedDemoData(db, { automations, executions }, clock);
-    await automations.delete('demo-a4');
-    await seedDemoData(db, { automations, executions }, clock);
+    runMigrations(old);
 
-    expect(await automations.findAll()).toHaveLength(3);
-    const history = await executions.findAll();
-    expect(history).toHaveLength(8);
-    expect(history.every((e) => e.simulated)).toBe(true);
+    expect(
+      old
+        .prepare('SELECT id FROM automations')
+        .all()
+        .map((r) => r.id),
+    ).toEqual(['real-1']);
+    expect(
+      old
+        .prepare('SELECT id FROM executions')
+        .all()
+        .map((r) => r.id),
+    ).toEqual(['real-e1']);
+    expect(
+      old
+        .prepare('SELECT key FROM app_meta')
+        .all()
+        .map((r) => r.key),
+    ).toEqual(['outra']);
+    const columns = old
+      .prepare('PRAGMA table_info(executions)')
+      .all()
+      .map((c) => c.name);
+    expect(columns).not.toContain('simulated');
   });
 });

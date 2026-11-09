@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { app, Menu, powerMonitor } from 'electron';
+import { app, Menu, powerMonitor, shell } from 'electron';
 import audioHostPath from '../../resources/audio-host.html?asset';
 import appIconPath from '../../resources/icon.png?asset';
 import alertSoundPath from '../../resources/sounds/alert.wav?asset';
@@ -13,6 +13,7 @@ import { DEFAULT_PREFERENCES, type Preferences } from '@shared/schemas/preferenc
 import { createContainer } from './composition-root';
 import { registerIpcHandlers } from './ipc/register-handlers';
 import { ElectronNotifier } from './services/electron-notifier';
+import { SafeStorageCredentialStore } from './services/safe-storage-credential-store';
 import { SoundPlayer } from './services/sound-player';
 import { applyLoginItem, wasStartedHidden } from './services/login-item';
 import { TrayController } from './tray/tray-controller';
@@ -51,6 +52,9 @@ async function main(): Promise<void> {
     join(app.getPath('userData'), 'kandesk.db'),
     {
       notifier: new ElectronNotifier(sounds, () => windows.show()),
+      credentials: new SafeStorageCredentialStore(
+        join(app.getPath('userData'), 'kanban-credentials.bin'),
+      ),
       onHistoryChanged: () => windows.broadcast(EXECUTIONS_CHANGED_EVENT),
       onSchedulerStatusChanged: () => windows.broadcast(SCHEDULER_STATUS_CHANGED_EVENT),
     },
@@ -75,6 +79,7 @@ async function main(): Promise<void> {
       applyLoginItem(next.startWithSystem);
     },
     quit: () => app.quit(),
+    openExternal: (url) => shell.openExternal(url),
     sendTestNotification: () => useCases.notifications.sendTest(),
     previewTone: (tone) => sounds.play(tone),
   });

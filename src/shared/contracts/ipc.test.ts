@@ -12,8 +12,21 @@ describe('ipcChannels', () => {
       name: 'x',
       version: '1',
       platform: 'linux',
-      integrationMode: 'MOCK',
     });
     expect(ok.success).toBe(true);
+  });
+
+  it('abre card só com referência sprint/card', () => {
+    const { input } = ipcChannels['kanban:open-card'];
+    expect(input.safeParse({ id: '10526/254132' }).success).toBe(true);
+    expect(input.safeParse({ id: 'https://evil.test' }).success).toBe(false);
+    expect(input.safeParse({ id: '1/2/../3' }).success).toBe(false);
+  });
+
+  it('aceita tasks:list sem argumento ou com refresh', () => {
+    const { input } = ipcChannels['tasks:list'];
+    expect(input.safeParse(undefined).success).toBe(true);
+    expect(input.safeParse({ refresh: true }).success).toBe(true);
+    expect(input.safeParse({ refresh: 'sim' }).success).toBe(false);
   });
 });

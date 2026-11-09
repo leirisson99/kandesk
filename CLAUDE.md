@@ -302,7 +302,7 @@ Deve concentrar preferências como:
 - Notificações.
 - Preferências de execução.
 
-Não exibir campos de token enquanto a integração real não estiver sendo implementada.
+Campos de usuário e token do Kanban ficam em uma seção própria de conexão (o token é só de entrada, nunca exibido nem devolvido ao Renderer; guardado com `safeStorage`). A integração real das ações continua pendente: as ações permanecem simuladas até a pausa ser validada.
 
 ## 10. Agendamento e execução
 
@@ -465,9 +465,8 @@ Para cada funcionalidade solicitada:
 - Tipo: aplicativo desktop.
 - Plataformas-alvo: Windows, macOS e Ubuntu/Linux.
 - Stack planejada: Electron, React, TypeScript, Vite, Tailwind, shadcn/ui, SQLite e Zod.
-- Integração com API: **ainda não disponível**.
-- Token: **ainda não disponível**.
-- Etapa inicial: frontend, fundação Electron e fluxos com mocks.
-- Ações simuladas não devem ser apresentadas como alterações realizadas no Kanban real.
+- Integração com API: **leitura implementada** (JSON-RPC do Kanboard, ver `docs/KANBAN_INVESTIGATION.md`); **pausa e retomada ainda não** (lançam erro explícito e o histórico registra falha).
+- Token: informado em Configurações e guardado com `safeStorage`. Não há mais dados nem repositórios simulados.
+- Etapa atual: conexão por token e listagem real; falta implementar a pausa/retomada e a lógica de alertas da extensão.
 
-**Prioridade imediata:** construir uma base desktop segura e uma interface funcional com dados mockados, mantendo a arquitetura preparada para a integração futura com a API.
+**Prioridade imediata:** validar como pausar um requisito (a extensão usa o formulário web com cookie; a API por token não foi confirmada) e depois trazer os alertas da extensão.

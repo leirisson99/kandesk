@@ -5,11 +5,14 @@ import type {
   Clock,
   ExecutionRepository,
   IdGenerator,
+  CredentialStore,
+  KanbanAuthClient,
   Notifier,
   PreferencesRepository,
   TaskRepository,
 } from '../ports';
 import { createAutomationUseCases } from './automations';
+import { createConnectionUseCases } from './connection';
 import { createNotificationUseCases } from './notifications';
 
 export interface UseCaseDeps {
@@ -20,6 +23,9 @@ export interface UseCaseDeps {
   clock: Clock;
   ids: IdGenerator;
   notifier: Notifier;
+  pauseSupported: boolean;
+  credentials: CredentialStore;
+  kanbanAuth: KanbanAuthClient;
   onAutomationsChanged?: () => void;
 }
 
@@ -27,7 +33,8 @@ export function createUseCases(deps: UseCaseDeps) {
   return {
     automations: createAutomationUseCases({ ...deps, onChange: deps.onAutomationsChanged }),
     notifications: createNotificationUseCases(deps),
-    listTasks: () => deps.tasks.findAll(),
+    connection: createConnectionUseCases(deps),
+    listTasks: (options?: { refresh?: boolean }) => deps.tasks.findAll(options),
     listExecutions: () => deps.executions.findAll(),
     getPreferences: () => deps.preferences.get(),
     async updatePreferences(patch: unknown) {

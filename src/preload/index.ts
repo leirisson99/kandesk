@@ -32,7 +32,8 @@ const api: RendererApi = {
   getSchedulerStatus: () => ipcRenderer.invoke('scheduler:get-status'),
   onSchedulerStatusChanged: (listener) =>
     subscribe<void>(SCHEDULER_STATUS_CHANGED_EVENT, () => listener()),
-  listTasks: () => ipcRenderer.invoke('tasks:list'),
+  listTasks: (options) => ipcRenderer.invoke('tasks:list', options),
+  openCard: (id) => ipcRenderer.invoke('kanban:open-card', { id }),
   listAutomations: () => ipcRenderer.invoke('automations:list'),
   createAutomation: (input) => ipcRenderer.invoke('automations:create', input),
   updateAutomation: (id, input) => ipcRenderer.invoke('automations:update', { id, input }),
@@ -43,6 +44,10 @@ const api: RendererApi = {
   onExecutionsChanged: (listener) => subscribe<void>(EXECUTIONS_CHANGED_EVENT, () => listener()),
   getPreferences: () => ipcRenderer.invoke('preferences:get'),
   updatePreferences: (patch) => ipcRenderer.invoke('preferences:update', patch),
+  getConnectionStatus: () => ipcRenderer.invoke('kanban:get-status'),
+  connectKanban: (input) => ipcRenderer.invoke('kanban:connect', input),
+  testKanbanConnection: () => ipcRenderer.invoke('kanban:test-connection'),
+  disconnectKanban: () => ipcRenderer.invoke('kanban:disconnect'),
 };
 
 contextBridge.exposeInMainWorld('api', api);

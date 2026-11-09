@@ -9,6 +9,8 @@ interface AutomationListItemProps {
   selected: boolean;
   onSelect: () => void;
   onToggle: (enabled: boolean) => void;
+  /** false na versão de avaliação: só é possível desativar. */
+  canEnable: boolean;
 }
 
 export function AutomationListItem({
@@ -17,6 +19,7 @@ export function AutomationListItem({
   selected,
   onSelect,
   onToggle,
+  canEnable,
 }: AutomationListItemProps) {
   const { name, pauseAt, resumeAt, weekdays, enabled } = automation;
 
@@ -40,7 +43,12 @@ export function AutomationListItem({
           <span className="text-slate-700">{formatWeekdays(weekdays)}</span>
         </p>
       </button>
-      <Switch checked={enabled} onChange={onToggle} label={`Ativar ${name}`} />
+      <Switch
+        checked={enabled}
+        onChange={onToggle}
+        label={`Ativar ${name}`}
+        disabled={!enabled && !canEnable}
+      />
     </div>
   );
 }

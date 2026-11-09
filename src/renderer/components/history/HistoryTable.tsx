@@ -8,14 +8,6 @@ interface HistoryTableProps {
   records: ExecutionRecord[];
 }
 
-function SimulatedTag() {
-  return (
-    <span className="ml-2 rounded bg-slate-200 px-1.5 py-0.5 text-[10px] font-bold text-slate-600 uppercase">
-      Simulada
-    </span>
-  );
-}
-
 const headers = ['Data e hora', 'Automação', 'Ação', 'Status', 'HTTP', 'Mensagem'];
 
 export function HistoryTable({ records }: HistoryTableProps) {
@@ -49,10 +41,7 @@ export function HistoryTable({ records }: HistoryTableProps) {
                   <ExecutionStatusBadge status={r.status} />
                 </td>
                 <td className="px-4 py-3 text-slate-700">{r.httpStatus ?? '—'}</td>
-                <td className="px-4 py-3 text-slate-700">
-                  {r.message}
-                  {r.simulated && <SimulatedTag />}
-                </td>
+                <td className="px-4 py-3 text-slate-700">{r.message}</td>
               </tr>
             );
           })}

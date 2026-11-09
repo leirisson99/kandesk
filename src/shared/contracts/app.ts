@@ -5,8 +5,6 @@ export const appInfoSchema = z.object({
   name: z.string(),
   version: z.string(),
   platform: z.enum(['win32', 'darwin', 'linux']),
-  /** Enquanto não houver API real, toda integração é simulada. */
-  integrationMode: z.enum(['MOCK', 'REAL']),
 });
 
 export type AppInfo = z.infer<typeof appInfoSchema>;

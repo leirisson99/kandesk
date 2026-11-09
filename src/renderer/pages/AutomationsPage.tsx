@@ -5,11 +5,11 @@ import type { Automation } from '@shared/types/automation';
 import { AutomationForm } from '@/components/automation/AutomationForm';
 import { AutomationListItem } from '@/components/automation/AutomationListItem';
 import { DataState } from '@/components/DataState';
-import { DemoNotice } from '@/components/DemoNotice';
 import { Alert, Button, Input, PageHeader } from '@/components/ui';
 import { useAutomations } from '@/hooks/useAutomations';
 import { errorMessage } from '@/lib/errors';
 import { useTasks } from '@/hooks/useTasks';
+import { EVALUATION_NOTICE, FEATURES } from '@shared/constants/features';
 
 const TIMEZONES = ['America/Sao_Paulo', 'America/Manaus', 'UTC'];
 
@@ -82,16 +82,23 @@ export function AutomationsPage() {
         title="Automações"
         description="Regras salvas localmente. O agendador sempre recalcula a partir delas."
         actions={
-          <Button variant="primary" onClick={() => setSelectedId('NEW')}>
+          <Button
+            variant="primary"
+            disabled={!FEATURES.pauseAndResume}
+            onClick={() => setSelectedId('NEW')}
+          >
             + Nova automação
           </Button>
         }
       />
-      <DemoNotice />
-      <DataState
-        loading={automations.loading || tasks.loading}
-        error={automations.error ?? tasks.error}
-      >
+      {!FEATURES.pauseAndResume && (
+        <div className="mb-5">
+          <Alert tone="warning" title="Versão de avaliação">
+            {EVALUATION_NOTICE}
+          </Alert>
+        </div>
+      )}
+      <DataState loading={automations.loading} error={automations.error}>
         <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)] items-start gap-5">
           <div className="flex flex-col gap-3">
             <Input
@@ -115,6 +122,7 @@ export function AutomationsPage() {
                     selected={a.id === activeId}
                     onSelect={() => setSelectedId(a.id)}
                     onToggle={(enabled) => void toggle(a.id, enabled)}
+                    canEnable={FEATURES.pauseAndResume}
                   />
                 </li>
               ))}
@@ -130,12 +138,17 @@ export function AutomationsPage() {
           <AutomationForm
             key={activeId}
             title={selected ? 'Editar automação' : 'Nova automação'}
-            initial={selected ? toInput(selected) : EMPTY_INPUT}
+            initial={
+              selected ? toInput(selected) : { ...EMPTY_INPUT, taskId: params.get('task') ?? '' }
+            }
             tasks={taskList}
+            tasksLoading={tasks.loading}
+            tasksError={tasks.error}
             timezones={TIMEZONES}
             onSave={save}
             onDelete={selected ? remove : undefined}
             onCancel={() => setSelectedId(null)}
+            saveBlockedReason={FEATURES.pauseAndResume ? undefined : EVALUATION_NOTICE}
           />
         </div>
       </DataState>

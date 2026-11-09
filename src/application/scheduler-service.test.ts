@@ -75,7 +75,6 @@ class Harness {
       outcome: 'APPLIED',
       message,
       httpStatus: null,
-      simulated: true,
     });
     const tasks: TaskRepository = {
       findAll: async () => [],
@@ -164,11 +163,10 @@ describe('SchedulerService', () => {
     expect(h.history[0]).toMatchObject({
       action: 'PAUSE',
       status: 'SUCCESS',
-      simulated: true,
       scheduledFor: '2026-11-09T15:00:00.000Z',
     });
     expect(h.automations.get('a1')?.lastExecutedAt).not.toBeNull();
-    expect(h.notifications[0]).toContain('Ação simulada');
+    expect(h.notifications[0]).toContain('Ação executada');
     expect(h.historyEvents).toBeGreaterThan(0);
   });
 

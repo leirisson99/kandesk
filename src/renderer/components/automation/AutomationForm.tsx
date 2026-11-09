@@ -15,21 +15,28 @@ interface AutomationFormProps {
   title: string;
   initial: AutomationInput;
   tasks: Task[];
+  tasksLoading: boolean;
+  tasksError: string | null;
   timezones: string[];
   onSave: (input: AutomationInput) => Promise<void>;
   /** Presente apenas ao editar uma automação existente. */
   onDelete?: () => Promise<void>;
   onCancel: () => void;
+  /** Quando presente, o formulário não pode ser salvo e mostra este motivo. */
+  saveBlockedReason?: string;
 }
 
 export function AutomationForm({
   title,
   initial,
   tasks,
+  tasksLoading,
+  tasksError,
   timezones,
   onSave,
   onDelete,
   onCancel,
+  saveBlockedReason,
 }: AutomationFormProps) {
   const [values, setValues] = useState<AutomationInput>(initial);
   const [errors, setErrors] = useState<Errors>({});
@@ -91,7 +98,7 @@ export function AutomationForm({
           label="Tarefa no Kanban"
           htmlFor="taskId"
           error={errors.taskId}
-          hint="O vínculo é feito pelo ID da tarefa, não pelo título. Lista simulada (demonstração)."
+          hint="Seus cards nas colunas EM … e PAUSADO das sprints ativas. O vínculo é feito pelo ID, não pelo título."
         >
           <Select
             id="taskId"
@@ -99,13 +106,21 @@ export function AutomationForm({
             aria-invalid={!!errors.taskId}
             onChange={(e) => set('taskId', e.target.value)}
           >
-            <option value="">Selecione…</option>
+            <option value="">{tasksLoading ? 'Carregando tarefas…' : 'Selecione…'}</option>
+            {values.taskId && !tasks.some((t) => t.id === values.taskId) && (
+              <option value={values.taskId}>#{values.taskId} (fora da lista atual)</option>
+            )}
             {tasks.map((task) => (
               <option key={task.id} value={task.id}>
-                {task.title} · #{task.id}
+                {task.title} · {task.column} · #{task.id}
               </option>
             ))}
           </Select>
+          {tasksError && (
+            <Alert tone="warning" title="Não foi possível carregar as tarefas">
+              {tasksError}
+            </Alert>
+          )}
         </FormField>
 
         <div className="grid grid-cols-2 gap-4">
@@ -158,6 +173,12 @@ export function AutomationForm({
 
         <UpcomingRuns runs={upcoming} />
 
+        {saveBlockedReason && (
+          <Alert tone="warning" title="Salvar indisponível">
+            {saveBlockedReason}
+          </Alert>
+        )}
+
         {submitError && (
           <Alert tone="danger" title="Não foi possível salvar">
             {submitError}
@@ -182,7 +203,7 @@ export function AutomationForm({
           </div>
           <div className="flex gap-3">
             <Button onClick={onCancel}>Cancelar</Button>
-            <Button type="submit" variant="primary" disabled={busy}>
+            <Button type="submit" variant="primary" disabled={busy || !!saveBlockedReason}>
               {busy ? 'Salvando…' : 'Salvar automação'}
             </Button>
           </div>

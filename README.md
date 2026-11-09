@@ -1,17 +1,44 @@
 # Kanban Automation (kandesk)
 
 Aplicativo desktop (Electron + React + TypeScript) para automatizar ações em tarefas do Kanban.
-Nesta etapa a integração com a API é **simulada (mock)**. Veja [CLAUDE.md](CLAUDE.md) e [docs/](docs/).
+**Versão de avaliação (0.1.0):** a conexão com o Kanban por token e a lista dos seus cards funcionam; a
+pausa e a retomada reais ainda estão em desenvolvimento (por isso criar ou ativar automações está bloqueado).
+Veja [CLAUDE.md](CLAUDE.md) e [docs/](docs/).
+
+## Instalação (versão de avaliação)
+
+**Ubuntu** (precisa de um cofre de credenciais ativo, como o gnome-keyring, para guardar o token):
+
+```bash
+sudo apt install ./kandesk-0.1.0-linux-amd64.deb
+```
+
+**Windows:** execute `kandesk-0.1.0-win-x64.exe`. O instalador **não é assinado**, então o SmartScreen pode avisar
+"editor desconhecido": clique em _Mais informações_ → _Executar assim mesmo_. Instala só para o seu usuário
+(sem administrador).
+
+**Primeiro uso:**
+
+1. No Kanboard, abra seu perfil → API → _Gerar um novo token_ (ele substitui o anterior). Não compartilhe o token.
+2. No app: _Configurações_ → _Conexão com o Kanban_ → informe usuário e token → _Validar e salvar_.
+   O token fica cifrado neste computador e nunca é exibido de volta.
+3. Abra _Cards_ para ver os cards em que você é o responsável nas sprints ativas.
+
+Os dados locais (banco SQLite e a credencial cifrada) ficam na pasta de dados do aplicativo do seu sistema.
+Para remover tudo: desinstale o app e apague a pasta _Kanban Automation_ em `~/.config` (Linux) ou
+`%APPDATA%` (Windows).
 
 ## Comandos
 
-| Comando             | O que faz                               |
-| ------------------- | --------------------------------------- |
-| `npm run dev`       | Executa o app em modo desenvolvimento   |
-| `npm run build`     | Typecheck + build de produção em `out/` |
-| `npm run typecheck` | Verificação de tipos (`tsc -b`)         |
-| `npm run lint`      | ESLint                                  |
-| `npm test`          | Testes (Vitest)                         |
+| Comando              | O que faz                                  |
+| -------------------- | ------------------------------------------ |
+| `npm run dev`        | Executa o app em modo desenvolvimento      |
+| `npm run build`      | Typecheck + build de produção em `out/`    |
+| `npm run dist:linux` | Gera o `.deb` (Ubuntu) em `release/`       |
+| `npm run dist:win`   | Gera o instalador do Windows (veja abaixo) |
+| `npm run typecheck`  | Verificação de tipos (`tsc -b`)            |
+| `npm run lint`       | ESLint                                     |
+| `npm test`           | Testes (Vitest)                            |
 
 > Se o app falhar com `Cannot read properties of undefined (reading 'app')`, a variável
 > `ELECTRON_RUN_AS_NODE` está definida no terminal (comum em terminais do VS Code). Rode com
@@ -19,9 +46,9 @@ Nesta etapa a integração com a API é **simulada (mock)**. Veja [CLAUDE.md](CL
 
 ## Estrutura
 
-- `src/main` — processo principal: janela, handlers IPC e `composition-root.ts` (único lugar que escolhe SQLite/mock).
+- `src/main` — processo principal: janela, handlers IPC e `composition-root.ts` (único lugar que escolhe as implementações: SQLite, Kanban, Electron).
 - `src/application` — portas (`ports.ts`), erros e casos de uso; não conhece Electron, React nem SQLite.
-- `src/infrastructure` — SQLite (`node:sqlite`, sem dependência nativa), migrações, repositórios e mocks.
+- `src/infrastructure` — SQLite (`node:sqlite`, sem dependência nativa), migrações, repositórios SQLite e o cliente do Kanban (`kanban/`, `repositories/kanban/`).
 - `src/preload` — API mínima exposta via `contextBridge` (`window.api`).
 - `src/renderer` — interface React (rotas, layout, páginas).
 - `src/shared` — contratos e schemas Zod compartilhados (canais IPC em `contracts/ipc.ts`).
@@ -63,7 +90,7 @@ Layouts de referência: `layouts-exemplos/`.
   "Sair" (menu da bandeja ou Configurações) encerra de verdade. Se o sistema não conseguir criar a bandeja,
   a janela fecha normalmente (para o app não ficar inacessível). Abrir o app de novo mostra a janela existente.
 - **Iniciar com o sistema:** só no app instalado (nunca em `npm run dev`) e apenas Windows/macOS; Linux não suporta.
-- **Notificações nativas:** respeitam as preferências (sucesso, falha, ocorrência perdida) e dizem quando a ação foi simulada.
+- **Notificações nativas:** respeitam as preferências (sucesso, falha, ocorrência perdida) e informam o resultado da ação.
 - **Som e toque:** a notificação do sistema sai sempre `silent` e o app toca o próprio som ([sound-player.ts](src/main/services/sound-player.ts)),
   porque o som nativo só é confiável no macOS. Em Configurações o usuário liga/desliga o som e escolhe 1 de 5 toques
   (Cristal, Alerta, Gota, Sino, Pulso), usado em **todas** as notificações; ao escolher, o toque é reproduzido ("Ouvir" repete).
@@ -71,8 +98,13 @@ Layouts de referência: `layouts-exemplos/`.
   Os arquivos são `resources/sounds/<id>.wav` (gerados, sem direitos de terceiros). Para adicionar um toque: novo `.wav`,
   novo id em [notification-tones.ts](src/shared/constants/notification-tones.ts), import em `main/index.ts` e rótulo em
   `renderer/lib/notification-tones.ts`. Um toque salvo que deixe de existir volta ao padrão (Cristal).
-- **Empacotamento (Fase 6):** os assets em `resources/` (ícones, sons, `audio-host.html`) são referenciados por caminho
-  relativo (`?asset`); o instalador precisa incluir a pasta `resources/` junto do app.
+- **Empacotamento:** configurado em [electron-builder.yml](electron-builder.yml). Os assets em `resources/` (ícones, sons,
+  `audio-host.html`) são referenciados por caminho relativo (`?asset`, a partir de `out/main`), por isso a pasta
+  `resources/` vai dentro do pacote. O `.deb` foi gerado e testado no Ubuntu. O instalador do Windows **não pode ser
+  gerado em Linux sem o `wine`** (o electron-builder edita o `.exe`); gere-o numa máquina Windows com
+  `npm ci && npm run dist:win`.
+- **Versão de avaliação:** a chave `FEATURES.pauseAndResume` em [features.ts](src/shared/constants/features.ts) bloqueia
+  criar, editar e ativar automações (também no backend). Ligue-a quando a pausa real for implementada e validada.
 
 ### Limitações conhecidas
 

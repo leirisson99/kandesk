@@ -59,7 +59,7 @@ export function TitleBarMenu() {
           </button>
           <div className="my-1 border-t border-slate-200" />
           <p className="px-3 py-1.5 text-xs text-slate-500">
-            Kandesk {info ? `v${info.version}` : ''} · modo demonstração
+            Kandesk {info ? `v${info.version}` : ''}
           </p>
           <div className="my-1 border-t border-slate-200" />
           <button

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
-import { History, LayoutDashboard, Settings, Zap, type LucideIcon } from 'lucide-react';
+import { History, Kanban, LayoutDashboard, Settings, Zap, type LucideIcon } from 'lucide-react';
 import { DashboardPage } from './pages/DashboardPage';
+import { CardsPage } from './pages/CardsPage';
 import { AutomationsPage } from './pages/AutomationsPage';
 import { HistoryPage } from './pages/HistoryPage';
 import { SettingsPage } from './pages/SettingsPage';
@@ -14,6 +15,7 @@ export interface AppRoute {
 
 export const routes: AppRoute[] = [
   { path: '/', label: 'Painel', icon: LayoutDashboard, element: <DashboardPage /> },
+  { path: '/cards', label: 'Cards', icon: Kanban, element: <CardsPage /> },
   { path: '/automations', label: 'Automações', icon: Zap, element: <AutomationsPage /> },
   { path: '/history', label: 'Histórico', icon: History, element: <HistoryPage /> },
   { path: '/settings', label: 'Configurações', icon: Settings, element: <SettingsPage /> },

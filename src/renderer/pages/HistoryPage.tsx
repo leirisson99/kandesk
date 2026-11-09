@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import { DataState } from '@/components/DataState';
-import { DemoNotice } from '@/components/DemoNotice';
 import { HistoryFilters } from '@/components/history/HistoryFilters';
 import { HistoryTable } from '@/components/history/HistoryTable';
 import { PageHeader } from '@/components/ui';
@@ -28,7 +27,6 @@ export function HistoryPage() {
         title="Histórico de execuções"
         description="Cada ocorrência agendada aparece uma única vez."
       />
-      <DemoNotice />
       <DataState loading={loading} error={error}>
         <HistoryFilters automations={automations} value={filter} onChange={setFilter} />
         <HistoryTable records={records} />

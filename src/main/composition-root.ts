@@ -1,12 +1,15 @@
+import { FEATURES } from '@shared/constants/features';
+import { KANBAN_BASE_URL } from '@shared/constants/kanban';
 import { randomUUID } from 'node:crypto';
 import type { DatabaseSync } from 'node:sqlite';
 import { createOccurrenceExecutor } from '@application/occurrence-executor';
-import type { Notifier } from '@application/ports';
+import type { CredentialStore, Notifier } from '@application/ports';
 import { SchedulerService } from '@application/scheduler-service';
 import { createUseCases, type UseCases } from '@application/use-cases';
 import { openDatabase } from '@infrastructure/database/connection';
-import { seedDemoData } from '@infrastructure/database/seed-demo';
-import { MockTaskRepository } from '@infrastructure/repositories/mock/mock-task-repository';
+import { KanbanAuthApiClient } from '@infrastructure/kanban/kanban-auth-client';
+import { KanbanJsonRpcClient } from '@infrastructure/kanban/jsonrpc-client';
+import { KanbanTaskRepository } from '@infrastructure/repositories/kanban/kanban-task-repository';
 import { SqliteAutomationRepository } from '@infrastructure/repositories/sqlite/sqlite-automation-repository';
 import { SqliteExecutionRepository } from '@infrastructure/repositories/sqlite/sqlite-execution-repository';
 import { SqlitePreferencesRepository } from '@infrastructure/repositories/sqlite/sqlite-preferences-repository';
@@ -20,14 +23,15 @@ export interface Container {
 
 interface PlatformAdapters {
   notifier: Notifier;
+  credentials: CredentialStore;
   onHistoryChanged: () => void;
   onSchedulerStatusChanged: () => void;
 }
 
-/** Único ponto que escolhe as implementações concretas (SQLite, mock, Electron). */
+/** Único ponto que escolhe as implementações concretas (SQLite, Kanban, Electron). */
 export async function createContainer(
   databasePath: string,
-  { notifier, onHistoryChanged, onSchedulerStatusChanged }: PlatformAdapters,
+  { notifier, credentials, onHistoryChanged, onSchedulerStatusChanged }: PlatformAdapters,
 ): Promise<Container> {
   const db = openDatabase(databasePath);
   const clock = { now: () => new Date() };
@@ -35,9 +39,9 @@ export async function createContainer(
   const automations = new SqliteAutomationRepository(db);
   const executions = new SqliteExecutionRepository(db);
   const preferences = new SqlitePreferencesRepository(db);
-  const tasks = new MockTaskRepository();
-
-  await seedDemoData(db, { automations, executions }, clock);
+  const kanbanRpc = new KanbanJsonRpcClient({ baseUrl: KANBAN_BASE_URL });
+  const kanbanAuth = new KanbanAuthApiClient(kanbanRpc);
+  const tasks = new KanbanTaskRepository(kanbanRpc, credentials, kanbanAuth, clock);
 
   const scheduler = new SchedulerService({
     automations,
@@ -71,6 +75,9 @@ export async function createContainer(
     clock,
     ids,
     notifier,
+    pauseSupported: FEATURES.pauseAndResume,
+    credentials,
+    kanbanAuth,
     onAutomationsChanged: () => void scheduler.refresh(),
   });
 

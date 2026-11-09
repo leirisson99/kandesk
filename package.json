@@ -3,6 +3,8 @@
   "productName": "Kanban Automation",
   "version": "0.1.0",
   "description": "Aplicativo desktop para automatizar ações em tarefas do Kanban",
+  "author": "Kandesk",
+  "desktopName": "kandesk.desktop",
   "private": true,
   "main": "./out/main/index.js",
   "scripts": {
@@ -12,7 +14,10 @@
     "typecheck": "tsc -b",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "dist": "npm run build && electron-builder",
+    "dist:linux": "npm run build && electron-builder --linux",
+    "dist:win": "npm run build && electron-builder --win"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -22,6 +27,7 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.2.1",
     "electron": "^45.2.3",
+    "electron-builder": "^26.18.0",
     "electron-vite": "^6.0.0",
     "eslint": "^10.14.0",
     "eslint-plugin-react-hooks": "^7.1.1",

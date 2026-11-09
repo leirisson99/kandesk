@@ -1,0 +1,39 @@
+# Empacotamento do Kanban Automation (electron-builder).
+appId: com.kandesk.app
+productName: Kanban Automation
+copyright: Kandesk
+artifactName: kandesk-${version}-${os}-${arch}.${ext}
+
+directories:
+  output: release
+
+# `?asset` resolve os arquivos a partir de out/main (../../resources), então a pasta
+# resources/ precisa ir dentro do pacote junto do código compilado.
+files:
+  - out/**
+  - resources/**
+  - package.json
+asar: true
+
+linux:
+  target:
+    - deb
+  category: Office
+  syncDesktopName: true
+  icon: resources/icon.png
+  maintainer: Kandesk <kandesk@invalid>
+  synopsis: Automação de pausa e retomada de cards do Kanban
+  description: Lista seus cards do Kanban e, futuramente, pausa e retoma tarefas em horários definidos.
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: resources/icon.png
+
+nsis:
+  # Instala só para o usuário atual: não pede administrador.
+  oneClick: true
+  perMachine: false
+  deleteAppDataOnUninstall: false

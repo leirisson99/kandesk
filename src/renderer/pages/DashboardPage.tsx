@@ -1,13 +1,14 @@
 import { TriangleAlert } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { DataState } from '@/components/DataState';
-import { DemoNotice } from '@/components/DemoNotice';
 import { RecentExecutions, type RecentExecution } from '@/components/dashboard/RecentExecutions';
 import { UpcomingOccurrences, type Occurrence } from '@/components/dashboard/UpcomingOccurrences';
 import { Alert, Button, PageHeader, StatCard } from '@/components/ui';
+import { FEATURES } from '@shared/constants/features';
 import { useAutomations } from '@/hooks/useAutomations';
 import { useExecutions } from '@/hooks/useExecutions';
 import { useNow } from '@/hooks/useNow';
+import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { useTasks } from '@/hooks/useTasks';
 import { listUpcoming } from '@shared/domain/occurrences';
 import { describeInstant, formatDateTime } from '@/lib/format';
@@ -15,7 +16,8 @@ import { describeInstant, formatDateTime } from '@/lib/format';
 export function DashboardPage() {
   const automations = useAutomations();
   const executions = useExecutions();
-  const tasks = useTasks();
+  const tasks = useTasks(); // só enriquece títulos: se falhar, o painel continua útil
+  const connection = useConnectionStatus();
   const now = useNow();
 
   const autos = automations.data ?? [];
@@ -55,15 +57,16 @@ export function DashboardPage() {
         title="Painel"
         description="Resumo da operação"
         actions={
-          <Link to="/automations">
-            <Button variant="primary">+ Nova automação</Button>
-          </Link>
+          FEATURES.pauseAndResume ? (
+            <Link to="/automations">
+              <Button variant="primary">+ Nova automação</Button>
+            </Link>
+          ) : undefined
         }
       />
-      <DemoNotice />
       <DataState
-        loading={automations.loading || executions.loading || tasks.loading}
-        error={automations.error ?? executions.error ?? tasks.error}
+        loading={automations.loading || executions.loading}
+        error={automations.error ?? executions.error}
       >
         {missedCount > 0 && (
           <div className="mb-5">
@@ -92,12 +95,16 @@ export function DashboardPage() {
           <StatCard
             label="Execuções registradas"
             value={history.length}
-            caption={`${history.filter((x) => x.simulated).length} simuladas`}
+            caption={`${history.filter((x) => x.status === 'ERROR').length} com falha`}
           />
           <StatCard
             label="API do Kanban"
-            value="Simulada"
-            caption="Integração real não configurada"
+            value={connection?.configured ? 'Configurada' : 'Não configurada'}
+            caption={
+              connection?.configured
+                ? `Conta ${connection.username}. Pausa real ainda indisponível`
+                : 'Informe usuário e token em Configurações'
+            }
           />
         </div>
 

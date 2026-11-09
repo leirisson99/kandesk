@@ -29,7 +29,7 @@ export function createOccurrenceExecutor(deps: Deps) {
     automation: Automation,
     action: AutomationAction,
     scheduledFor: Date,
-    result: Pick<ExecutionRecord, 'status' | 'httpStatus' | 'message' | 'simulated'>,
+    result: Pick<ExecutionRecord, 'status' | 'httpStatus' | 'message'>,
     executedAt: Date,
   ): Promise<ExecutionRecord> {
     const entry: ExecutionRecord = {
@@ -51,12 +51,11 @@ export function createOccurrenceExecutor(deps: Deps) {
     const prefs = await preferences.get();
     const label = ACTION_LABEL[entry.action];
     const sound = prefs.notificationSound ? prefs.notificationTone : null;
-    const note = entry.simulated ? ' Nenhuma tarefa real foi alterada.' : '';
 
     if (entry.status === 'SUCCESS' && prefs.notifySuccess) {
       notifier.show({
-        title: `${entry.simulated ? 'Ação simulada' : 'Ação executada'}: ${entry.automationName}`,
-        body: `${label} · ${entry.message}.${note}`,
+        title: `Ação executada: ${entry.automationName}`,
+        body: `${label} · ${entry.message}.`,
         sound,
       });
     } else if (entry.status === 'ERROR' && prefs.notifyCommFailure) {
@@ -96,7 +95,6 @@ export function createOccurrenceExecutor(deps: Deps) {
             status: result.outcome === 'APPLIED' ? 'SUCCESS' : 'SKIPPED',
             httpStatus: result.httpStatus,
             message: result.message,
-            simulated: result.simulated,
           },
           executedAt,
         );
@@ -109,7 +107,6 @@ export function createOccurrenceExecutor(deps: Deps) {
             status: 'ERROR',
             httpStatus: null,
             message: error instanceof Error ? error.message : String(error),
-            simulated: true,
           },
           executedAt,
         );
@@ -129,7 +126,7 @@ export function createOccurrenceExecutor(deps: Deps) {
         automation,
         action,
         scheduledFor,
-        { status: 'MISSED', httpStatus: null, message: reason, simulated: false },
+        { status: 'MISSED', httpStatus: null, message: reason },
         scheduledFor,
       );
     },

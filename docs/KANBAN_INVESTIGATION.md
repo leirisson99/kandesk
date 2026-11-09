@@ -1,6 +1,7 @@
 # KANBAN_INVESTIGATION — Sistema Kanban interno
 
-**Status:** Em investigação (análise da extensão do Chrome prevista para segunda-feira)
+**Status:** Em investigação. Código da extensão analisado em 2026-11-09 (fonte: `extencao-exemplo/`).
+Leitura via API confirmada **pelo código**; pausa por token **não confirmada** (ver seções 5 e 6).
 **Objetivo:** reunir, a partir da extensão existente, tudo o que for necessário para integrar o
 Kanban Automation ao Kanban interno: autenticação, endpoints, formato dos dados, estados e limites.
 
@@ -31,17 +32,25 @@ Kanban Automation ao Kanban interno: autenticação, endpoints, formato dos dado
 
 Marque quando respondida e registre a fonte na seção 11.
 
-- [ ] A API pode ser chamada **fora do navegador** (ex.: `curl`, Node) com um token?
-- [ ] Esse token autoriza **escrita** (pausar/retomar), e não só leitura?
-- [ ] Existe operação de **retomar**, ou só de pausar?
-- [ ] É possível **consultar o estado atual** da tarefa antes e depois da ação?
-- [ ] Qual a validade do token, e como renovar/revogar?
-- [ ] Há limite de requisições (rate limit)?
-- [ ] A rede interna exige **VPN**, proxy ou certificado próprio?
-- [ ] Como identificar "tarefas atribuídas a mim" (para os alertas futuros)?
-- [ ] A resposta traz a **data da última mudança de status** (ou um histórico de status)?
-- [ ] Dá para **filtrar os cards do usuário logado** (campo de responsável ou filtro na API)?
-- [ ] A extensão **já lê os status dos cards** hoje? Por API ou pela tela (DOM)?
+- [x] A API pode ser chamada **fora do navegador** com um token? — **Sim, confirmado em 2026-11-09:** `curl` com
+  Basic auth (usuário:token) em `/jsonrpc.php` respondeu `getMe` com sucesso, sem cookie e sem VPN/proxy. (§11, #1 e #10)
+- [ ] Esse token autoriza **escrita** (pausar/retomar), e não só leitura? — **Não confirmado.** A extensão **não** pausa
+  pela API; pausa pelo formulário web com cookie (§11, #3). Falta testar um método de escrita com o token.
+- [ ] Existe operação de **retomar**, ou só de pausar? — A extensão não retoma; só lembra o usuário de retomar (§11, #4).
+- [x] É possível **consultar o estado atual** da tarefa antes e depois da ação? — Sim para cronômetros:
+  `getAllSubtasks` (`status`, `is_timer_started`, `timer_start_date`) e `hasSubtaskTimer` (§11, #5).
+- [ ] Qual a validade do token, e como renovar/revogar? — O token é gerado no perfil do Kanboard (API → "Gerar um novo
+  token"). Validade e revogação não aparecem no código. `[A CONFIRMAR]`
+- [ ] Há limite de requisições (rate limit)? — Não aparece no código. A extensão envia lotes de até 40 chamadas e usa
+  cache para reduzir tráfego. `[A CONFIRMAR]`
+- [ ] A rede interna exige **VPN**, proxy ou certificado próprio? — `[A CONFIRMAR]` (a extensão roda no navegador do usuário).
+- [x] Como identificar "tarefas atribuídas a mim"? — **Pelo `owner_id` do card**, que o `getBoard` já devolve
+  (confirmado em 2026-11-09, §11 #12). A extensão de referência não o usa: deduz "meu" por cronômetro, subtask ou tempo
+  lançado (§11 #6), o que **não** achou os cards deste usuário.
+- [x] A resposta traz a **data da última mudança de status**? — **Sim:** os cards do `getBoard` trazem `date_moved`
+  (§11 #12). Formato confirmado: texto com segundos Unix (§11 #15). Falta confirmar se ela muda só ao mover de coluna.
+- [x] Dá para **filtrar os cards do usuário logado**? — Não por filtro de API; filtra no cliente (ver "meu" acima).
+- [x] A extensão **já lê os status dos cards** hoje? — Sim, **por API** (`getBoard`), não por DOM (§11, #2).
 
 ## 3. Como coletar as informações (segunda-feira)
 
@@ -70,28 +79,28 @@ Marque quando respondida e registre a fonte na seção 11.
 
 | Item | Valor |
 |---|---|
-| Nome / ID | `[A PREENCHER]` |
-| Versão do manifest (V2 ou V3) | `[A PREENCHER]` |
-| Permissões (`permissions`) | `[A PREENCHER]` |
-| Domínios permitidos (`host_permissions`) | `[A PREENCHER]` |
-| Content scripts (páginas em que atua) | `[A PREENCHER]` |
-| Background / service worker | `[A PREENCHER]` |
-| Código-fonte disponível? Onde? | `[A PREENCHER]` |
-| Como lê os cards (API ou DOM)? | `[A PREENCHER]` |
-| Como pausa um card (API ou clique)? | `[A PREENCHER]` |
-| O que faz hoje com alertas | `[A PREENCHER]` |
+| Nome / ID | "Card Guard - Kanboard SCI" v0.1.0 (ID da extensão: não aplicável, carregada sem compactação) |
+| Versão do manifest (V2 ou V3) | V3 (`manifest.json`) |
+| Permissões (`permissions`) | `alarms`, `notifications`, `storage` |
+| Domínios permitidos (`host_permissions`) | `https://kanboard.sci.com.br/*` e `https://www.rhnetsocial.com.br/*` |
+| Content scripts (páginas em que atua) | Nenhum. Só service worker + página de opções |
+| Background / service worker | `background.js` (módulo ES), checagem por `chrome.alarms` a cada `checkEveryMinutes` (padrão 1 min) |
+| Código-fonte disponível? Onde? | Sim, não minificado: `extencao-exemplo/` (README, `api.js`, `kanboard.js`, `logic.js`, `rh.js`, `cache.js`, `config.js`, `background.js`) |
+| Como lê os cards (API ou DOM)? | **API JSON-RPC** (`api.js`, `kanboard.js`). Só a pausa e o RH Net usam HTML |
+| Como pausa um card (API ou clique)? | **Formulário web com cookie de sessão** (`background.js: pauseSubtask`): abre a página do card, acha o link "Pausar…", abre o modal, preenche a observação e faz POST. Não usa a API |
+| O que faz hoje com alertas | Em expediente: avisa card em coluna "EM …" sem cronômetro meu rodando, e card em "PAUSAD/PARAD" com cronômetro meu rodando. Fora do expediente: pausa os requisitos em andamento e avisa; ao voltar, lembra de retomar. Anti-repetição por `renotifyEveryMinutes` (60 min) |
 
 ## 5. Autenticação
 
 | Item | Valor |
 |---|---|
-| Mecanismo (token, cookie de sessão, OAuth…) | `[A CONFIRMAR]` |
-| Onde o usuário obtém o token | `[A CONFIRMAR]` |
-| Cabeçalho/forma de envio (apenas o **nome**, ex.: `Authorization: Bearer <TOKEN>`) | `[A CONFIRMAR]` |
-| Escopos/permissões do token | `[A CONFIRMAR]` |
+| Mecanismo (token, cookie de sessão, OAuth…) | **Leitura:** usuário + token da API (Kanboard). **Pausa:** cookie de sessão do navegador. **RH Net:** cookie de sessão |
+| Onde o usuário obtém o token | Perfil no Kanboard → API → "Gerar um novo token" (`extencao-exemplo/README.md`) |
+| Cabeçalho/forma de envio (apenas o **nome**, ex.: `Authorization: Bearer <TOKEN>`) | `Authorization: Basic base64(<USUARIO>:<TOKEN>)` + `Content-Type: application/json`, sem cookies (`api.js`) |
+| Escopos/permissões do token | `[A CONFIRMAR]` (o Kanboard padrão dá ao token as permissões do usuário; não verificado aqui) |
 | Validade e renovação | `[A CONFIRMAR]` |
 | Como revogar | `[A CONFIRMAR]` |
-| Erro quando expirado (status e corpo) | `[A CONFIRMAR]` |
+| Erro quando expirado (status e corpo) | HTTP **401** com corpo `{"error":{"code":401,"message":"Unauthorized"},"id":null}` (confirmado em 2026-11-09, §11 #16) |
 | Erro quando sem permissão (status e corpo) | `[A CONFIRMAR]` |
 
 ## 6. Endpoints
@@ -100,13 +109,22 @@ Preencher **uma linha por operação observada**. Operação sem evidência fica
 
 | Operação | Método e caminho | Entrada | Saída (campos relevantes) | Fonte |
 |---|---|---|---|---|
-| URL base | `[A CONFIRMAR]` | — | — | |
-| Listar tarefas | `[A CONFIRMAR]` | | | |
-| Consultar uma tarefa | `[A CONFIRMAR]` | | | |
-| Pausar tarefa | `[A CONFIRMAR]` | | | |
-| Retomar tarefa | `[A CONFIRMAR]` | | | |
-| Usuário atual (`/me` ou similar) | `[A CONFIRMAR]` | | | |
-| Tarefas atribuídas a mim | `[A CONFIRMAR]` | | | |
+| URL base | `https://kanboard.sci.com.br` | — | — | `config.js` |
+| Endpoint único da API | `POST /jsonrpc.php` (JSON-RPC 2.0, aceita **array** de chamadas em lote) | `[{jsonrpc, id, method, params}]` | `[{id, result}]` ou `[{id, error:{message}}]`, casadas pelo `id` | `api.js` |
+| Usuário atual | RPC `getMe` | `{}` | `id`, `name`, `username` | `background.js` |
+| Meus projetos (sprints) | RPC `getMyProjects` | `{}` | lista com `id`, `is_active` ("1" = ativo) | `background.js` |
+| Listar cards de uma sprint | RPC `getBoard` | `{project_id}` | raias → `columns[]` → `{id, title, tasks[{id, title}]}` | `kanboard.js: boardCandidates` |
+| Consultar uma tarefa | **Não usado.** `getTask` `[A CONFIRMAR]` | | | |
+| Requisitos (subtasks) do card | RPC `getAllSubtasks` | `{task_id}` | `id`, `title`, `status`, `type`, `user_id`, `is_timer_started`, `timer_start_date` | `kanboard.js` |
+| Tenho cronômetro neste requisito? | RPC `hasSubtaskTimer` | `{subtask_id, user_id}` | `true`/`false` | `kanboard.js` |
+| Tempo lançado por mim | RPC `getSubtaskTimeSpent` | `{subtask_id, user_id}` | número (> 0 = já trabalhei) | `kanboard.js` |
+| Pausar | **Sem endpoint de API observado.** Fluxo web: `GET <href do link "Pausar…">` com `X-Requested-With: XMLHttpRequest` → formulário do modal → `POST <action do form>` (`application/x-www-form-urlencoded`, cookie de sessão), com campo de observação | campos do form (inclui token CSRF `[A CONFIRMAR]`) | HTTP 2xx = ok | `background.js: pauseSubtask`, `logic.js: parseConfirmForm` |
+| Retomar | **Não existe na extensão** `[A CONFIRMAR]` | | | |
+| Página do card (web) | `GET /sprint/{projectId}/solicitacao/{taskId}` | — | HTML com `<tr data-subtask-id>` | `background.js` |
+
+Observações do modelo: o alvo da pausa é o **requisito (subtask) com cronômetro**, não o card. Status de subtask
+"em andamento" = `"1"` (desenvolvimento) e `"4"` (teste), ou `is_timer_started === true` (`kanboard.js`).
+Os ids das colunas mudam a cada sprint; a classificação é pelo **nome** (§7.2).
 
 Exemplos reais (sanitizados) de requisição e resposta devem ir na seção 12.
 
@@ -118,31 +136,40 @@ Campos observados na resposta da API e como mapeiam para o nosso `Task`
 
 | Campo na API | Tipo | Exemplo (sanitizado) | Nosso campo | Observação |
 |---|---|---|---|---|
-| `[A CONFIRMAR]` | | | `id` | Identificador estável? É o mesmo exibido na tela (ex.: `KB-1042`)? |
-| `[A CONFIRMAR]` | | | `title` | |
-| `[A CONFIRMAR]` | | | `status` | Ver 7.2 |
-| `[A CONFIRMAR]` | | | `assignee` | |
-| `[A CONFIRMAR]` | | | `updatedAt` | Formato e fuso da data |
+| `tasks[].id` (em `getBoard`) | número/string | `254132` | `id` | Estável. Referência completa no sistema = `projectId/taskId` (ex.: `10526/254132`), usada em `ref` e na URL do card |
+| `tasks[].title` | string | — | `title` | |
+| `columns[].title` (coluna do card) | string | `EM DESENVOLVIMENTO`, `PAUSADO` | `status` | Não há campo "status" separado observado; o estado do card é a **coluna**. Ver 7.2 |
+| — | — | — | `assignee` | **Sem campo de responsável usado.** Deduzir por subtasks/cronômetro (§2). `[A CONFIRMAR]` se `getBoard` traz `assignee_*` |
+| — | — | — | `updatedAt` | **Não observado.** `timer_start_date` (segundos Unix) existe só na subtask |
+
+Mapeamento de domínio: o objeto que o app pausa é a **subtask com cronômetro** (`subtasks[].id`). O `Task` atual
+(`src/shared/types/automation.ts`) precisará representar `projectId` + `taskId` e, na execução, resolver as subtasks em andamento.
 
 ### 7.2 Estados e transições
-- Valores possíveis de status: `[A CONFIRMAR]`
-- Qual valor significa **pausada**: `[A CONFIRMAR]`
-- Qual valor significa **em andamento**: `[A CONFIRMAR]`
-- Retomar volta para qual estado? (sempre o anterior? um fixo?): `[A CONFIRMAR]`
-- Pausar uma tarefa já pausada: erro ou sucesso silencioso? `[A CONFIRMAR]`
-- Quem pode pausar (só o responsável? qualquer um?): `[A CONFIRMAR]`
+- Valores possíveis de status (colunas): variam por sprint; nomes observados: `EM DESENVOLVIMENTO`, `PAUSADO`
+  (relatório de execução) e, pelos padrões da extensão, `EM CODE REVIEW`, `HOMOLOGAÇÃO`, `EM TESTES`,
+  `DESENVOLVIMENTO PARADO`, `TESTE PARADO`. Lista completa: `[A CONFIRMAR]`
+- Qual valor significa **pausada**: coluna cujo nome casa `PAUSAD|PARAD` (sem acento, maiúsculo) — `config.js`
+- Qual valor significa **em andamento**: coluna que casa `^EM ` — `config.js`
+- Retomar volta para qual estado? `[A CONFIRMAR]` (não implementado na extensão)
+- Pausar uma tarefa já pausada: `[A CONFIRMAR]`. A extensão evita o caso: só pausa subtask com cronômetro meu aberto
+- Quem pode pausar: a extensão só pausa cronômetros **do próprio usuário**. Pausar o de outro: `[A CONFIRMAR]`
+- Subtask: status `"1"` = em desenvolvimento, `"4"` = teste em andamento (`kanboard.js`); demais valores `[A CONFIRMAR]`
 
 ### 7.3 Dados para o alerta de "card parado" (monitoramento)
 O alerta "card há muito tempo no mesmo status" depende destes dados. Marque o que a API/extensão fornece:
 
 | Dado | Existe? | Campo / fonte | Observação |
 |---|---|---|---|
-| Data da última mudança de status (ex.: `statusChangedAt`) | `[A CONFIRMAR]` | | Com ele o tempo parado é **exato**. |
+| Data da última mudança de status (ex.: `statusChangedAt`) | **Sim (campo observado)** | `date_moved` em cada card do `getBoard` | Com ele o tempo parado é **exato**. Formato confirmado (segundos Unix, §11 #15); falta confirmar a semântica (só mudança de coluna?). |
 | Histórico de status (lista de transições com data) | `[A CONFIRMAR]` | | Alternativa ao campo acima. |
-| Data de última atualização genérica (`updatedAt`) | `[A CONFIRMAR]` | | **Não serve sozinha**: muda com comentários, edições etc., não só com o status. |
-| Responsável do card | `[A CONFIRMAR]` | | Necessário para monitorar só "os meus". |
-| Filtro "meus cards" (na API ou na página) | `[A CONFIRMAR]` | | |
-| Coluna/etapa do quadro, além do status | `[A CONFIRMAR]` | | Pode ser a base de limites diferentes por etapa. |
+| Data de última atualização genérica (`updatedAt`) | Não observado | | **Não serve sozinha**: muda com comentários, edições etc. |
+| Responsável do card | **Sim** | `owner_id`, `assignee_username`, `assignee_name` no `getBoard` | Usado pelo app para listar "meus cards". |
+| Filtro "meus cards" (na API ou na página) | Sem filtro no servidor | filtro no cliente por `owner_id` | A extensão deduz por cronômetro/subtask (`isMe`, `loadCardEntries`) |
+| Coluna/etapa do quadro, além do status | **Sim** | `columns[].title` em `getBoard` | Base para limites por etapa. |
+
+> **Importante:** a extensão **não mede "card muito tempo parado"** (mas o `getBoard` traz `date_moved`, que torna isso viável). Ela só detecta **inconsistência entre coluna
+> e cronômetro** (ver §9.2). O alerta de tempo parado é funcionalidade **nova** a construir.
 
 **Sem data de mudança de status**, o app só sabe quando **viu** o card naquele status pela primeira vez.
 O tempo parado vira uma estimativa e se perde se o app ou o Chrome ficarem fechados por dias.
@@ -152,13 +179,13 @@ Registrar essa limitação se for o caso.
 
 | Item | Valor |
 |---|---|
-| Formato de erro (campos, códigos) | `[A CONFIRMAR]` |
-| Códigos HTTP usados (401, 403, 404, 409, 5xx…) | `[A CONFIRMAR]` |
-| Rate limit | `[A CONFIRMAR]` |
-| Timeout razoável | `[A CONFIRMAR]` |
+| Formato de erro (campos, códigos) | Por chamada no lote: `{id, error:{message}}`. HTTP 401 = token inválido; outros não-ok viram `kanboard HTTP <n>` (`api.js`) |
+| Códigos HTTP usados (401, 403, 404, 409, 5xx…) | Só 401 tratado explicitamente. Demais `[A CONFIRMAR]` |
+| Rate limit | `[A CONFIRMAR]`. A extensão limita a 40 chamadas por envio e usa cache (TTLs em `cache.js`) |
+| Timeout razoável | Não definido na extensão (sem `AbortController`). `[A CONFIRMAR]` |
 | Exige VPN/proxy/certificado interno? | `[A CONFIRMAR]` |
-| Chamadas de fora do navegador funcionam? (CORS não se aplica ao Node) | `[A CONFIRMAR]` |
-| Idempotência (repetir pausar gera efeito colateral?) | `[A CONFIRMAR]` |
+| Chamadas de fora do navegador funcionam? (CORS não se aplica ao Node) | `[A CONFIRMAR]`: testar com `curl`/Node (próxima etapa) |
+| Idempotência (repetir pausar gera efeito colateral?) | `[A CONFIRMAR]`. A extensão reduz o risco relendo o estado e invalidando o cache após pausar |
 
 ## 9. Decisões que esta investigação deve produzir
 
@@ -194,6 +221,26 @@ Limitações a respeitar:
 - Se a API puder ser chamada direto com token, o próprio app monitora **sem extensão** e com o Chrome fechado.
 - Item já registrado no backlog de `docs/ROADMAP.md` e descrito em `docs/alert.md`.
 
+### 9.2 Lógica de alerta da extensão (a trazer para o app)
+Fonte: `extencao-exemplo/logic.js: evaluate` e `background.js: runCheck`. Regras observadas:
+
+| Situação | Regra | Ação da extensão |
+|---|---|---|
+| Em expediente, nenhum cronômetro meu aberto em nenhum card monitorado | `workTime && nothingRunning` | Alerta geral "nenhum card em andamento" (substitui os alertas por card) |
+| Em expediente, card meu em coluna "working" (`^EM `) sem cronômetro meu | `columnKind=working && openMine=0` | Alerta `idle:<ref>` |
+| Em expediente, card meu em coluna "paused" (`PAUSAD\|PARAD`) com cronômetro meu rodando | `columnKind=paused && openMine>0` | Alerta `running-paused:<ref>` |
+| Fora do expediente, cronômetro meu aberto | `!workTime && openMine>0` | Pausa o requisito (formulário web) e avisa; senão avisa para pausar manualmente |
+| Volta ao expediente | `pausedByUs` não vazio | Lembra de retomar o que a extensão pausou |
+
+Outras regras de comportamento: anti-repetição por chave (`renotifyEveryMinutes`, padrão 60 min, limpeza em 24 h);
+reconfirma com dados frescos antes de agir quando a decisão veio de cache; "expediente" vem das batidas do RH Net
+(`rh.js`) ou, se indisponível, de horários manuais (08:00–12:45 / 14:00–18:00, seg–sex). Um card é "meu" se há
+cronômetro meu aberto ou o registro de tempo mais recente é meu.
+
+**Lacuna:** nenhuma dessas regras mede **tempo no mesmo status**. O alerta "card muito tempo parado" é novo e depende
+de confirmar uma data de mudança de coluna na API (§7.3, `date_moved` `[A CONFIRMAR]`). Sem ela, o app só saberá desde
+quando *viu* o card na coluna. As regras acima não dependem disso e podem ser portadas como estão.
+
 ## 10. Impacto no código
 
 Onde cada descoberta entra, para não reescrever telas:
@@ -216,23 +263,51 @@ A troca do mock pela integração real deve **não exigir mudanças** nas telas 
 
 Registre cada achado com data e fonte, em ordem cronológica.
 
-| Data | Achado | Fonte (arquivo, requisição, pessoa) |
-|---|---|---|
-| | | |
+| # | Data | Achado | Fonte (arquivo, requisição, pessoa) |
+|---|---|---|---|
+| 1 | 2026-11-09 | O Kanboard expõe JSON-RPC em `/jsonrpc.php`; a extensão autentica com Basic `usuário:token`, `credentials: "omit"` (sem cookie). Ainda não testado fora do navegador | `extencao-exemplo/api.js` |
+| 2 | 2026-11-09 | Os cards são lidos por API (`getBoard`), não por DOM; o estado do card é a coluna, classificada pelo nome | `kanboard.js`, `config.js` |
+| 3 | 2026-11-09 | **A pausa não usa a API**: usa cookie de sessão e o formulário HTML do modal "Pausar…" com campo de observação | `background.js: pauseSubtask`, `logic.js: parseConfirmForm` |
+| 4 | 2026-11-09 | Não existe "retomar" na extensão; ela só lembra o usuário | `background.js: resumeReminder` |
+| 5 | 2026-11-09 | Estado do cronômetro consultável por API: `getAllSubtasks` (`is_timer_started`, `timer_start_date`), `hasSubtaskTimer` | `kanboard.js` |
+| 6 | 2026-11-09 | Não há "responsável do card": "meu" é deduzido por cronômetro/subtask/tempo lançado | `kanboard.js: loadCardEntries`, `logic.js: evaluate` |
+| 7 | 2026-11-09 | Alvo da ação é a **subtask (requisito)** com cronômetro, não o card | `background.js`, `kanboard.js` |
+| 8 | 2026-11-09 | Relatório de execução de exemplo: 2 sprints, 4 cards (2 EM DESENVOLVIMENTO, 2 PAUSADO), erro `rh-login` (sessão do RH Net expirada) com fallback para horários manuais | `vemda-do-sistema.md` |
+| 9 | 2026-11-09 | A extensão não mede tempo parado em status; só detecta inconsistência coluna × cronômetro | `logic.js: evaluate` |
+| 12 | 2026-11-09 | **Campos de cada card do `getBoard`** (só nomes, lidos no app): `id, reference, title, description, date_creation, date_modification, date_completed, date_started, date_due, color_id, project_id, column_id, swimlane_id, owner_id, creator_id, position, score, category_id, priority, date_moved, time_estimated_dev, time_spent_dev, status, assignee_username, assignee_name, assignee_email, category_name, column_name, swimlane_name, project_name, status_name, classification_name, tags, nb_subtasks, nb_comments…`. Há **responsável** (`owner_id`, `assignee_*`) e **data de mudança de coluna** (`date_moved`) | Log do app (`getBoard`) |
+| 13 | 2026-11-09 | `getMyProjects` devolveu 2 sprints ativas; o usuário tem 13 cards por `owner_id`, em AGUARDANDO DESENVOLVIMENTO, EM DESENVOLVIMENTO, AGUARDANDO CODE REVIEW, AGUARDANDO HOMOLOGAÇÃO, LIBERAR PRODUÇÃO e uma coluna de mês (OUTUBRO). Colunas de mês aparecem como arquivo do quadro | Log do app |
+| 14 | 2026-11-09 | As 4 colunas "de trabalho" por regex (EM …, PAUSADO) tinham 4 cards no total, mas só 1 era do usuário: a lista da extensão (`cards` do relatório) mostra candidatos, não "meus" | `vemda-do-sistema.md` × log do app |
+| 15 | 2026-11-09 | **`date_moved` vem como texto com segundos Unix** (ex.: `"1793039219"`), `project_name` e `assignee_name` como texto. O app converte para ISO e mostra "Na coluna há". Semântica exata (só mudança de coluna?) segue `[A CONFIRMAR]` | Log do app (tipo e valor de `date_moved`) |
+| 16 | 2026-11-09 | Token inválido ou revogado: **HTTP 401** com corpo `{"jsonrpc":"2.0","error":{"code":401,"message":"Unauthorized"},"id":null}` (o `id` vem nulo, sem casar com a chamada). Um token revogado deixa de funcionar na hora | Teste manual com `curl` |
+| 10 | 2026-11-09 | `getMe` via `curl` + Basic `usuário:token` funciona fora do navegador (sem cookie, sem VPN/proxy). HTTP 200, resposta JSON-RPC 2.0. Campos: `id`, `username`, `name`, `role` (`app-user`), `is_active`, `timezone` (nulo), etc. | Teste manual do usuário |
+| 11 | 2026-11-09 | **`getMe` devolve segredos**: `api_access_token` (o próprio token) e `twofactor_secret`. O app deve validar a resposta com Zod pegando **só** `id`, `username`, `name`, e **nunca** logar nem repassar o corpo bruto ao renderer | Teste manual do usuário |
 
 ## 12. Exemplos sanitizados
 
 Cole aqui exemplos reais com tudo sensível substituído. Um bloco por operação.
 
-### Listar tarefas
-```http
-[A PREENCHER]
-```
+Os blocos abaixo vêm **do código da extensão** (formato de envio), não de tráfego capturado. Respostas reais ainda
+precisam ser coletadas (marcadas `[A PREENCHER]`).
 
-### Pausar tarefa
+### Listar tarefas (leitura em lote)
 ```http
-[A PREENCHER]
+POST https://kanboard.sci.com.br/jsonrpc.php
+Authorization: Basic <BASE64(USUARIO:TOKEN)>
+Content-Type: application/json
+
+[
+  {"jsonrpc":"2.0","id":1,"method":"getBoard","params":{"project_id":10526}},
+  {"jsonrpc":"2.0","id":2,"method":"getAllSubtasks","params":{"task_id":254132}}
+]
 ```
+Resposta: `[A PREENCHER]` (forma esperada: `[{"jsonrpc":"2.0","id":1,"result":[...]}, ...]`)
+
+### Pausar tarefa (fluxo web, NÃO é API)
+```http
+GET  https://kanboard.sci.com.br<HREF_DO_LINK_PAUSAR>     # cookie de sessão + X-Requested-With: XMLHttpRequest
+POST https://kanboard.sci.com.br<ACTION_DO_FORM>          # application/x-www-form-urlencoded, campos do form + observação "pausa"
+```
+Campos do formulário e resposta: `[A PREENCHER]`
 
 ### Retomar tarefa
 ```http
@@ -248,7 +323,10 @@ Cole aqui exemplos reais com tudo sensível substituído. Um bloco por operaçã
 
 | Risco | Impacto | Ação |
 |---|---|---|
-| Token da API só funciona via sessão do navegador | Bloqueia a execução independente do Chrome | Confirmar na seção 5; avaliar ponte |
+| **Pausa só existe via formulário web com cookie (observado)** | Token não basta para pausar; app independente do Chrome fica sem a ação | Spike: testar método de escrita da API com o token; senão decidir entre sessão ou ponte |
+| Token da API só funciona via sessão do navegador | Bloqueia a execução independente do Chrome | Leitura por token está indicada no código; confirmar com `curl`/Node |
+| Marcação de HTML do Kanboard pode mudar (pausa e RH Net usam scraping) | Pausa quebra sem aviso | Não depender de scraping no app; se inevitável, testes e erro explícito |
+| Alvo da ação é a subtask, não o card | Pausar o requisito errado | Casar por id e título e reler o estado depois |
 | Token de leitura não autoriza escrita | Pausa/retomada impossíveis pelo app | Confirmar escopos antes de implementar |
 | API não informa o estado atual | Maior risco de ação duplicada | Limitar retentativas; definir contrato |
 | Extensão manipula a página em vez de usar API | Sem contrato a consumir | Rever escopo do projeto |

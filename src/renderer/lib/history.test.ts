@@ -7,7 +7,6 @@ const make = (over: Partial<ExecutionRecord>): ExecutionRecord => ({
   automationId: 'a',
   automationName: 'A',
   taskId: 'KB-1',
-  simulated: false,
   action: 'PAUSE',
   status: 'SUCCESS',
   scheduledFor: '2026-11-07T18:00:00-03:00',

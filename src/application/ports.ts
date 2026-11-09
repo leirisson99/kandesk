@@ -2,8 +2,8 @@ import type { NotificationTone } from '@shared/constants/notification-tones';
 import type { Preferences } from '@shared/schemas/preferences';
 import type { Automation, ExecutionRecord, Task } from '@shared/types/automation';
 
-// Contratos dos quais a camada de aplicação depende. As implementações (SQLite, mock,
-// futuramente a API do Kanban) ficam em infrastructure/.
+// Contratos dos quais a camada de aplicação depende. As implementações (SQLite, API do Kanban)
+// ficam em infrastructure/.
 
 /** Resultado de uma ação sobre uma tarefa. */
 export interface TaskActionResult {
@@ -11,16 +11,45 @@ export interface TaskActionResult {
   outcome: 'APPLIED' | 'ALREADY_IN_STATE';
   message: string;
   httpStatus: number | null;
-  /** true quando nenhuma tarefa real foi alterada (implementação mock). */
-  simulated: boolean;
 }
 
 export interface TaskRepository {
-  findAll(): Promise<Task[]>;
+  /** `refresh: true` ignora qualquer cache da implementação. */
+  findAll(options?: { refresh?: boolean }): Promise<Task[]>;
   findById(id: string): Promise<Task | null>;
   /** Lança erro quando a ação não pôde ser realizada. */
   pause(id: string): Promise<TaskActionResult>;
   resume(id: string): Promise<TaskActionResult>;
+}
+
+export interface KanbanCredentials {
+  username: string;
+  token: string;
+}
+
+/** Credencial guardada. `displayName` não é segredo; é o nome devolvido pelo Kanban. */
+export interface StoredConnection extends KanbanCredentials {
+  displayName: string;
+}
+
+/** Guarda a credencial de forma segura. Nunca em texto puro nem no SQLite. */
+export interface CredentialStore {
+  /** Há armazenamento seguro no sistema? Sem ele, `save` deve falhar. */
+  isAvailable(): Promise<boolean>;
+  load(): Promise<StoredConnection | null>;
+  save(connection: StoredConnection): Promise<void>;
+  clear(): Promise<void>;
+}
+
+export interface KanbanUser {
+  id: string;
+  username: string;
+  name: string;
+}
+
+export interface KanbanAuthClient {
+  /** Confirma a credencial no Kanban. Lança AuthError ou CommunicationError. */
+  verify(credentials: KanbanCredentials): Promise<KanbanUser>;
 }
 
 export interface AutomationRepository {

@@ -7,6 +7,7 @@ import { useAppInfo } from '@/hooks/useAppInfo';
 import { usePreferences } from '@/hooks/usePreferences';
 import { Info } from 'lucide-react';
 import { Badge, Alert, Button, PageHeader, Select } from '@/components/ui';
+import { ConnectionSection } from '@/components/settings/ConnectionSection';
 import {
   SettingRow,
   SettingSwitchRow,
@@ -83,11 +84,12 @@ export function SettingsPage() {
 
       <div className="mb-5">
         <Alert tone="info" icon={<Info className="size-4 shrink-0" aria-hidden />}>
-          A conexão com a API do Kanban ainda não está disponível. Nesta etapa as ações são
-          simuladas e as preferências abaixo são salvas localmente, mas ainda não alteram o
-          comportamento do app.
+          Versão de avaliação: a pausa e a retomada reais ainda estão em desenvolvimento. A conexão
+          com o Kanban e a lista de cards já funcionam.
         </Alert>
       </div>
+
+      <ConnectionSection />
 
       <SettingsSection
         title="Segundo plano"
@@ -167,7 +169,7 @@ export function SettingsPage() {
       </SettingsSection>
 
       <div className="flex items-center justify-between">
-        <p className="text-sm text-slate-500">Kandesk · dados de demonstração</p>
+        <p className="text-sm text-slate-500">Kandesk {info ? `v${info.version}` : ''}</p>
         <Button variant="danger" onClick={() => void window.api.quitApp()}>
           Sair do aplicativo
         </Button>

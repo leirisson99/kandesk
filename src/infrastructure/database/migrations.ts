@@ -44,6 +44,14 @@ export const MIGRATIONS: readonly string[] = [
   CREATE UNIQUE INDEX executions_occurrence
     ON executions (automation_id, action, scheduled_for);
   `,
+  // 3: remove a carga de demonstração (ids demo-*) e a coluna `simulated`, que deixou de existir
+  // porque nenhuma ação é mais simulada.
+  `
+  DELETE FROM executions WHERE id LIKE 'demo-%';
+  DELETE FROM automations WHERE id LIKE 'demo-%';
+  DELETE FROM app_meta WHERE key = 'demo_seeded';
+  ALTER TABLE executions DROP COLUMN simulated;
+  `,
 ];
 
 export function runMigrations(db: DatabaseSync, migrations: readonly string[] = MIGRATIONS): void {

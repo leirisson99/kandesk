@@ -8,7 +8,14 @@ import {
   taskSchema,
   type AutomationInput,
 } from '../schemas/automation';
+import { CARD_REF_PATTERN } from '../domain/kanban-links';
 import { NOTIFICATION_TONES, type NotificationTone } from '../constants/notification-tones';
+import {
+  connectionInputSchema,
+  connectionStatusSchema,
+  type ConnectionInput,
+  type ConnectionStatus,
+} from '../schemas/connection';
 import { schedulerStatusSchema, windowStateSchema } from '../schemas/system';
 import { preferencesSchema, type Preferences } from '../schemas/preferences';
 import type { Automation, ExecutionRecord, Task } from '../types/automation';
@@ -33,7 +40,14 @@ export const ipcChannels = {
   'window:close': { input: z.undefined(), output: z.void() },
   'window:get-state': { input: z.undefined(), output: windowStateSchema },
   'scheduler:get-status': { input: z.undefined(), output: schedulerStatusSchema },
-  'tasks:list': { input: z.undefined(), output: z.array(taskSchema) },
+  'tasks:list': {
+    input: z.object({ refresh: z.boolean().optional() }).optional(),
+    output: z.array(taskSchema),
+  },
+  'kanban:open-card': {
+    input: z.object({ id: z.string().regex(CARD_REF_PATTERN, 'Referência de card inválida.') }),
+    output: z.void(),
+  },
   'automations:list': { input: z.undefined(), output: z.array(automationSchema) },
   'automations:create': { input: automationInputSchema, output: automationSchema },
   'automations:update': {
@@ -48,6 +62,10 @@ export const ipcChannels = {
   'executions:list': { input: z.undefined(), output: z.array(executionRecordSchema) },
   'preferences:get': { input: z.undefined(), output: preferencesSchema },
   'preferences:update': { input: preferencesSchema.partial(), output: preferencesSchema },
+  'kanban:get-status': { input: z.undefined(), output: connectionStatusSchema },
+  'kanban:connect': { input: connectionInputSchema, output: connectionStatusSchema },
+  'kanban:test-connection': { input: z.undefined(), output: connectionStatusSchema },
+  'kanban:disconnect': { input: z.undefined(), output: connectionStatusSchema },
 } as const;
 
 export type IpcChannel = keyof typeof ipcChannels;
@@ -73,7 +91,10 @@ export interface RendererApi {
   onWindowStateChanged(listener: (state: WindowState) => void): () => void;
   getSchedulerStatus(): Promise<SchedulerStatus>;
   onSchedulerStatusChanged(listener: () => void): () => void;
-  listTasks(): Promise<Task[]>;
+  /** Seus cards no Kanban. `refresh` ignora o cache de 60 s. */
+  listTasks(options?: { refresh?: boolean }): Promise<Task[]>;
+  /** Abre o card no navegador padrão (o Main monta o endereço; o renderer só informa o id). */
+  openCard(id: string): Promise<void>;
   listAutomations(): Promise<Automation[]>;
   createAutomation(input: AutomationInput): Promise<Automation>;
   updateAutomation(id: string, input: AutomationInput): Promise<Automation>;
@@ -84,4 +105,9 @@ export interface RendererApi {
   onExecutionsChanged(listener: () => void): () => void;
   getPreferences(): Promise<Preferences>;
   updatePreferences(patch: Partial<Preferences>): Promise<Preferences>;
+  getConnectionStatus(): Promise<ConnectionStatus>;
+  /** Valida a credencial no Kanban e a guarda com segurança. O token nunca volta ao renderer. */
+  connectKanban(input: ConnectionInput): Promise<ConnectionStatus>;
+  testKanbanConnection(): Promise<ConnectionStatus>;
+  disconnectKanban(): Promise<ConnectionStatus>;
 }

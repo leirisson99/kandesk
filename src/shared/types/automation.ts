@@ -1,5 +1,4 @@
-// Modelo provisório, alinhado ao layout de exemplo e a docs/. Os campos definitivos
-// devem respeitar o contrato da API do Kanban quando ele estiver disponível.
+// Modelo de domínio. Os campos do Kanban seguem o que foi observado em docs/KANBAN_INVESTIGATION.md.
 
 export type AutomationAction = 'PAUSE' | 'RESUME';
 
@@ -9,8 +8,17 @@ export type Weekday = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 export type ExecutionStatus = 'SUCCESS' | 'SKIPPED' | 'MISSED' | 'ERROR';
 
 export interface Task {
+  /** Referência completa no Kanban: `<sprint>/<card>` (ex.: `10526/254132`). */
   id: string;
   title: string;
+  /** Nome da coluna do quadro em que o card está (ex.: EM DESENVOLVIMENTO). */
+  column: string;
+  /** Nome da sprint (projeto) no Kanboard. */
+  projectName: string;
+  /** Responsável, quando informado. */
+  assignee: string | null;
+  /** Quando o card entrou na coluna atual (ISO 8601); null se o Kanboard não informou. */
+  movedAt: string | null;
 }
 
 export interface Automation {
@@ -43,6 +51,4 @@ export interface ExecutionRecord {
   executedAt: string;
   httpStatus: number | null;
   message: string;
-  /** true quando a ação não alterou uma tarefa real (fase mock). */
-  simulated: boolean;
 }
