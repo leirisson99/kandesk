@@ -118,7 +118,7 @@ Preencher **uma linha por operação observada**. Operação sem evidência fica
 | Requisitos (subtasks) do card | RPC `getAllSubtasks` | `{task_id}` | `id`, `title`, `status`, `type`, `user_id`, `is_timer_started`, `timer_start_date` | `kanboard.js` |
 | Tenho cronômetro neste requisito? | RPC `hasSubtaskTimer` | `{subtask_id, user_id}` | `true`/`false` | `kanboard.js` |
 | Tempo lançado por mim | RPC `getSubtaskTimeSpent` | `{subtask_id, user_id}` | número (> 0 = já trabalhei) | `kanboard.js` |
-| Pausar | **Sem endpoint de API observado.** Fluxo web: `GET <href do link "Pausar…">` com `X-Requested-With: XMLHttpRequest` → formulário do modal → `POST <action do form>` (`application/x-www-form-urlencoded`, cookie de sessão), com campo de observação | campos do form (inclui token CSRF `[A CONFIRMAR]`) | HTTP 2xx = ok | `background.js: pauseSubtask`, `logic.js: parseConfirmForm` |
+| Pausar | **A API por token não pausa:** `setSubtaskEndTime` existe, mas devolve HTTP 403 para este usuário (§11 #21). Outros métodos de escrita (ex.: `updateSubtask`) **não testados**. Fluxo web já conhecido: `GET <href do link "Pausar…">` com `X-Requested-With: XMLHttpRequest` → formulário do modal → `POST <action do form>` (`application/x-www-form-urlencoded`, cookie de sessão), com campo de observação | campos do form (inclui token CSRF `[A CONFIRMAR]`) | HTTP 2xx = ok | `background.js: pauseSubtask`, `logic.js: parseConfirmForm` |
 | Retomar | **Não existe na extensão** `[A CONFIRMAR]` | | | |
 | Página do card (web) | `GET /sprint/{projectId}/solicitacao/{taskId}` | — | HTML com `<tr data-subtask-id>` | `background.js` |
 
@@ -189,7 +189,7 @@ Registrar essa limitação se for o caso.
 
 ## 9. Decisões que esta investigação deve produzir
 
-- [ ] **Execução:** API direta com token no app (recomendado no PRD) **ou** ponte via extensão.
+- [x] **Execução:** ~~API direta com token~~ → **ponte via extensão** (decidido em 2026-11-10: a API por token devolve 403 ao pausar, §11 #21). Desenho em `docs/ARCHITECTURE.md` §9.1.
 - [ ] **Alertas de card novo:** polling feito pelo app (API) **ou** pela extensão.
 - [ ] **Tokens:** um só ou separados por escopo (leitura para alertas, escrita para ações).
 - [ ] **Estado antes/depois da ação:** conseguimos confirmar o resultado? (evita duplicidade)
@@ -279,6 +279,11 @@ Registre cada achado com data e fonte, em ordem cronológica.
 | 14 | 2026-11-09 | As 4 colunas "de trabalho" por regex (EM …, PAUSADO) tinham 4 cards no total, mas só 1 era do usuário: a lista da extensão (`cards` do relatório) mostra candidatos, não "meus" | `vemda-do-sistema.md` × log do app |
 | 15 | 2026-11-09 | **`date_moved` vem como texto com segundos Unix** (ex.: `"1793039219"`), `project_name` e `assignee_name` como texto. O app converte para ISO e mostra "Na coluna há". Semântica exata (só mudança de coluna?) segue `[A CONFIRMAR]` | Log do app (tipo e valor de `date_moved`) |
 | 16 | 2026-11-09 | Token inválido ou revogado: **HTTP 401** com corpo `{"jsonrpc":"2.0","error":{"code":401,"message":"Unauthorized"},"id":null}` (o `id` vem nulo, sem casar com a chamada). Um token revogado deixa de funcionar na hora | Teste manual com `curl` |
+| 17 | 2026-11-10 | `getAllSubtasks` (card de teste) devolve 8 requisitos. Campos: `id, task_id, title, name, type, status, status_name, status_can_be_reverted, user_id, username, is_timer_started, timer_start_date, position, time_spent, time_spent_dev(_real), time_spent_test(_real), time_spent_special, time_estimated*, system_analysis, business_analysis, created_after_start, description`. Só o requisito de `type` 1 (desenvolvimento) tinha `user_id` do usuário; os de análise/code review/FAQ (`type` 2 a 8) vêm sem responsável (`user_id` 0) | Teste manual com `curl` (somente leitura) |
+| 18 | 2026-11-10 | **O status do requisito tem nome pronto** (`status_name`). Valor `5` = "Teste parado" (com `is_timer_started=false`). Os valores 1 e 4 são "em andamento" na extensão. Lista completa de status e transições `[A CONFIRMAR]` | idem |
+| 19 | 2026-11-10 | **`setSubtaskEndTime` EXISTE no servidor, com assinatura diferente do Kanboard padrão.** Com `{subtask_id, user_id}` responde `-32602 Invalid params: Too many arguments`; com `{subtask_id: 0}` responde `403 Forbidden` (`id` nulo). **Corrigido em #21:** o 403 era do método, não do id 0. Método inexistente responde `-32601 Method not found`. **Efeito testado em #21.** | Teste manual com `curl`, subtask 0 (sem efeito) |
+| 20 | 2026-11-10 | `hasSubtaskTimer {subtask_id, user_id}` → `false` para o requisito parado, como esperado. Formato de erro JSON-RPC: `-32602` params inválidos, `403` sem permissão, `-32601` método inexistente (HTTP 200 com erro no corpo; só autenticação falha com HTTP 401) | idem |
+| 21 | 2026-11-10 | **A API por token NÃO consegue encerrar o cronômetro.** `setSubtaskEndTime {subtask_id: <requisito real, seu, com cronômetro rodando>}` respondeu **HTTP 403 `{"error":{"code":403,"message":"Forbidden"},"id":null}`** (status HTTP 403, diferente dos erros de parâmetro, que vêm com HTTP 200). Antes e depois: `hasSubtaskTimer=true`, `timer_start_date` e `time_spent` idênticos, ou seja, **nada foi alterado**. Usuário com papel `app-user`; o método existe mas está barrado para este usuário/papel. O requisito era do próprio usuário (`user_id` igual ao do token) | Teste manual com `curl` no requisito R06 do card 251847 (autorizado pelo usuário) |
 | 10 | 2026-11-09 | `getMe` via `curl` + Basic `usuário:token` funciona fora do navegador (sem cookie, sem VPN/proxy). HTTP 200, resposta JSON-RPC 2.0. Campos: `id`, `username`, `name`, `role` (`app-user`), `is_active`, `timezone` (nulo), etc. | Teste manual do usuário |
 | 11 | 2026-11-09 | **`getMe` devolve segredos**: `api_access_token` (o próprio token) e `twofactor_secret`. O app deve validar a resposta com Zod pegando **só** `id`, `username`, `name`, e **nunca** logar nem repassar o corpo bruto ao renderer | Teste manual do usuário |
 

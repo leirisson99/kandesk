@@ -13,6 +13,7 @@ import { DEFAULT_PREFERENCES, type Preferences } from '@shared/schemas/preferenc
 import { createContainer } from './composition-root';
 import { registerIpcHandlers } from './ipc/register-handlers';
 import { ElectronNotifier } from './services/electron-notifier';
+import { SafeStoragePairingCodeStore } from './services/safe-storage-pairing-store';
 import { SafeStorageCredentialStore } from './services/safe-storage-credential-store';
 import { SoundPlayer } from './services/sound-player';
 import { applyLoginItem, wasStartedHidden } from './services/login-item';
@@ -48,13 +49,14 @@ async function main(): Promise<void> {
     bell: bellSoundPath,
     pulse: pulseSoundPath,
   });
-  const { db, useCases, scheduler } = await createContainer(
+  const { db, useCases, scheduler, bridge } = await createContainer(
     join(app.getPath('userData'), 'kandesk.db'),
     {
       notifier: new ElectronNotifier(sounds, () => windows.show()),
       credentials: new SafeStorageCredentialStore(
         join(app.getPath('userData'), 'kanban-credentials.bin'),
       ),
+      pairing: new SafeStoragePairingCodeStore(join(app.getPath('userData'), 'bridge-pairing.bin')),
       onHistoryChanged: () => windows.broadcast(EXECUTIONS_CHANGED_EVENT),
       onSchedulerStatusChanged: () => windows.broadcast(SCHEDULER_STATUS_CHANGED_EVENT),
     },
@@ -86,6 +88,7 @@ async function main(): Promise<void> {
 
   tray.create({ iconPath: trayIconPath, onOpen: () => windows.show(), onQuit: () => app.quit() });
   windows.create();
+  await bridge.start();
   await scheduler.start();
 
   // Ao acordar do sleep, reavalia na hora (ocorrências vencidas viram MISSED, nunca execução tardia).
@@ -103,6 +106,8 @@ async function main(): Promise<void> {
     void scheduler
       .stop()
       .catch((error: unknown) => console.error('Falha ao parar o agendador:', error))
+      .then(() => bridge.stop())
+      .catch((error: unknown) => console.error('Falha ao parar a ponte da extensão:', error))
       .finally(() => {
         tray.destroy();
         sounds.dispose();

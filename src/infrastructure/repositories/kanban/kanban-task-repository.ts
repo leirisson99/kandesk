@@ -1,8 +1,9 @@
 import { z } from 'zod';
-import { AuthError, CommunicationError, DomainError } from '@application/errors';
+import { AuthError, CommunicationError } from '@application/errors';
 import type {
   Clock,
   CredentialStore,
+  ExtensionGateway,
   KanbanAuthClient,
   KanbanCredentials,
   TaskActionResult,
@@ -14,8 +15,8 @@ import type { Task } from '@shared/types/automation';
 import type { KanbanJsonRpcClient } from '../../kanban/jsonrpc-client';
 
 const CACHE_TTL_MS = 60_000;
-const NOT_IMPLEMENTED =
-  'A pausa e a retomada reais ainda não foram implementadas. Nenhuma tarefa foi alterada.';
+const MANUAL_RESUME_MESSAGE =
+  'Retome o cronômetro manualmente no Kanboard. O app ainda não retoma sozinho.';
 
 const idSchema = z.union([z.number(), z.string()]).transform(String);
 const listOf = <T extends z.ZodType>(item: T) =>
@@ -62,8 +63,8 @@ interface BoardCard {
 }
 
 /**
- * Lê as tarefas do Kanboard (somente leitura). A pausa e a retomada ainda não existem aqui:
- * lançam erro explícito, que o histórico registra como falha, sem simular sucesso.
+ * Lê as tarefas do Kanboard. A pausa é feita pela extensão do navegador (a API por token não
+ * pausa; ver docs/KANBAN_INVESTIGATION.md §11 #21). A retomada é manual: o app só avisa.
  */
 export class KanbanTaskRepository implements TaskRepository {
   private cache: { key: string; at: number; tasks: Task[] } | null = null;
@@ -73,6 +74,7 @@ export class KanbanTaskRepository implements TaskRepository {
     private readonly credentials: CredentialStore,
     private readonly auth: KanbanAuthClient,
     private readonly clock: Clock,
+    private readonly extension: ExtensionGateway,
   ) {}
 
   /**
@@ -136,12 +138,14 @@ export class KanbanTaskRepository implements TaskRepository {
     return card ? toTask(card) : null;
   }
 
-  async pause(): Promise<TaskActionResult> {
-    throw new DomainError(NOT_IMPLEMENTED);
+  /** Pede à extensão que pause. Lança erro se ela não estiver conectada ou não responder. */
+  pause(id: string): Promise<TaskActionResult> {
+    return this.extension.pause(id);
   }
 
+  /** O app não retoma: devolve um aviso para o usuário fazer manualmente. */
   async resume(): Promise<TaskActionResult> {
-    throw new DomainError(NOT_IMPLEMENTED);
+    return { outcome: 'MANUAL_ACTION_REQUIRED', message: MANUAL_RESUME_MESSAGE, httpStatus: null };
   }
 
   private async requireCredentials(): Promise<KanbanCredentials> {

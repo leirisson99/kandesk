@@ -83,4 +83,6 @@ export function registerIpcHandlers(useCases: UseCases, hooks: IpcHooks): void {
   handle('kanban:connect', (input) => useCases.connection.connect(input));
   handle('kanban:test-connection', () => useCases.connection.test());
   handle('kanban:disconnect', () => useCases.connection.disconnect());
+  handle('bridge:get-status', () => useCases.bridge.getStatus());
+  handle('bridge:regenerate-code', () => useCases.bridge.regenerateCode());
 }

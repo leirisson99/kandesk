@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "Card Guard - Kanboard SCI",
+  "version": "0.1.0",
+  "description": "Avisa quando um card em andamento não está tramitado e pausa seus requisitos fora do expediente.",
+  "permissions": ["alarms", "notifications", "storage"],
+  "host_permissions": [
+    "https://kanboard.sci.com.br/*",
+    "https://www.rhnetsocial.com.br/*"
+  ],
+  "background": { "service_worker": "background.js", "type": "module" },
+  "options_page": "options.html",
+  "action": { "default_title": "Card Guard" },
+  "icons": { "128": "icon.png" }
+}

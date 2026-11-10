@@ -16,6 +16,7 @@ import {
   type ConnectionInput,
   type ConnectionStatus,
 } from '../schemas/connection';
+import { bridgeStatusSchema, type BridgeStatus } from '../schemas/bridge';
 import { schedulerStatusSchema, windowStateSchema } from '../schemas/system';
 import { preferencesSchema, type Preferences } from '../schemas/preferences';
 import type { Automation, ExecutionRecord, Task } from '../types/automation';
@@ -62,6 +63,8 @@ export const ipcChannels = {
   'executions:list': { input: z.undefined(), output: z.array(executionRecordSchema) },
   'preferences:get': { input: z.undefined(), output: preferencesSchema },
   'preferences:update': { input: preferencesSchema.partial(), output: preferencesSchema },
+  'bridge:get-status': { input: z.undefined(), output: bridgeStatusSchema },
+  'bridge:regenerate-code': { input: z.undefined(), output: bridgeStatusSchema },
   'kanban:get-status': { input: z.undefined(), output: connectionStatusSchema },
   'kanban:connect': { input: connectionInputSchema, output: connectionStatusSchema },
   'kanban:test-connection': { input: z.undefined(), output: connectionStatusSchema },
@@ -110,4 +113,8 @@ export interface RendererApi {
   connectKanban(input: ConnectionInput): Promise<ConnectionStatus>;
   testKanbanConnection(): Promise<ConnectionStatus>;
   disconnectKanban(): Promise<ConnectionStatus>;
+  /** Estado da ponte com a extensão do navegador e o código de pareamento. */
+  getBridgeStatus(): Promise<BridgeStatus>;
+  /** Gera um novo código de pareamento (o anterior deixa de valer). */
+  regenerateBridgeCode(): Promise<BridgeStatus>;
 }

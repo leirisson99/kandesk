@@ -465,8 +465,8 @@ Para cada funcionalidade solicitada:
 - Tipo: aplicativo desktop.
 - Plataformas-alvo: Windows, macOS e Ubuntu/Linux.
 - Stack planejada: Electron, React, TypeScript, Vite, Tailwind, shadcn/ui, SQLite e Zod.
-- Integração com API: **leitura implementada** (JSON-RPC do Kanboard, ver `docs/KANBAN_INVESTIGATION.md`); **pausa e retomada ainda não** (lançam erro explícito e o histórico registra falha).
+- Integração com API: **leitura implementada** (JSON-RPC do Kanboard, ver `docs/KANBAN_INVESTIGATION.md`); **pausa pela extensão do Chrome** (ponte local em `127.0.0.1`, ver `docs/ARCHITECTURE.md` §9.1; a API por token devolve 403), ainda sem teste de ponta a ponta; **retomada é manual** (o app avisa).
 - Token: informado em Configurações e guardado com `safeStorage`. Não há mais dados nem repositórios simulados.
 - Etapa atual: conexão por token e listagem real; falta implementar a pausa/retomada e a lógica de alertas da extensão.
 
-**Prioridade imediata:** validar como pausar um requisito (a extensão usa o formulário web com cookie; a API por token não foi confirmada) e depois trazer os alertas da extensão.
+**Prioridade imediata:** teste de ponta a ponta da pausa pela extensão com um requisito real (autorizado pelo usuário), ligar `FEATURES.pauseAndResume` e depois trazer os alertas da extensão.

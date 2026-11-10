@@ -31,6 +31,7 @@ export function createOccurrenceExecutor(deps: Deps) {
     scheduledFor: Date,
     result: Pick<ExecutionRecord, 'status' | 'httpStatus' | 'message'>,
     executedAt: Date,
+    manualAction = false,
   ): Promise<ExecutionRecord> {
     const entry: ExecutionRecord = {
       id: ids.next(),
@@ -43,16 +44,23 @@ export function createOccurrenceExecutor(deps: Deps) {
       ...result,
     };
     await executions.add(entry);
-    await notify(entry);
+    await notify(entry, manualAction);
     return entry;
   }
 
-  async function notify(entry: ExecutionRecord): Promise<void> {
+  async function notify(entry: ExecutionRecord, manualAction: boolean): Promise<void> {
     const prefs = await preferences.get();
     const label = ACTION_LABEL[entry.action];
     const sound = prefs.notificationSound ? prefs.notificationTone : null;
 
-    if (entry.status === 'SUCCESS' && prefs.notifySuccess) {
+    if (manualAction) {
+      // Lembrete de ação manual (ex.: retomar): é o objetivo da ocorrência, então sempre avisa.
+      notifier.show({
+        title: `Hora de ${label.toLowerCase()} manualmente: ${entry.automationName}`,
+        body: `${entry.taskId} · ${entry.message}`,
+        sound,
+      });
+    } else if (entry.status === 'SUCCESS' && prefs.notifySuccess) {
       notifier.show({
         title: `Ação executada: ${entry.automationName}`,
         body: `${label} · ${entry.message}.`,
@@ -97,6 +105,7 @@ export function createOccurrenceExecutor(deps: Deps) {
             message: result.message,
           },
           executedAt,
+          result.outcome === 'MANUAL_ACTION_REQUIRED',
         );
       } catch (error) {
         entry = await record(

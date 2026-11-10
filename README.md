@@ -24,6 +24,10 @@ sudo apt install ./kandesk-0.1.0-linux-amd64.deb
    O token fica cifrado neste computador e nunca é exibido de volta.
 3. Abra _Cards_ para ver os cards em que você é o responsável nas sprints ativas.
 
+**Pausa pela extensão do Chrome (quando a pausa for liberada):** instale a pasta `extension/` em
+`chrome://extensions` (Modo do desenvolvedor → _Carregar sem compactação_) e pareie com o app conforme
+[extension/README.md](extension/README.md). Retomar continua manual: o app só avisa.
+
 Os dados locais (banco SQLite e a credencial cifrada) ficam na pasta de dados do aplicativo do seu sistema.
 Para remover tudo: desinstale o app e apague a pasta _Kanban Automation_ em `~/.config` (Linux) ou
 `%APPDATA%` (Windows).
@@ -51,6 +55,7 @@ Para remover tudo: desinstale o app e apague a pasta _Kanban Automation_ em `~/.
 - `src/infrastructure` — SQLite (`node:sqlite`, sem dependência nativa), migrações, repositórios SQLite e o cliente do Kanban (`kanban/`, `repositories/kanban/`).
 - `src/preload` — API mínima exposta via `contextBridge` (`window.api`).
 - `src/renderer` — interface React (rotas, layout, páginas).
+- `extension/` — extensão do Chrome (JavaScript puro) que executa a pausa no navegador; fala com o app em `127.0.0.1` ([ARCHITECTURE §9.1](docs/ARCHITECTURE.md)).
 - `src/shared` — contratos e schemas Zod compartilhados (canais IPC em `contracts/ipc.ts`).
 
 Para adicionar uma operação IPC: declare o canal e seus schemas em `ipcChannels`, registre o

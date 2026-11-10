@@ -7,6 +7,7 @@ import { useAppInfo } from '@/hooks/useAppInfo';
 import { usePreferences } from '@/hooks/usePreferences';
 import { Info } from 'lucide-react';
 import { Badge, Alert, Button, PageHeader, Select } from '@/components/ui';
+import { BridgeSection } from '@/components/settings/BridgeSection';
 import { ConnectionSection } from '@/components/settings/ConnectionSection';
 import {
   SettingRow,
@@ -90,6 +91,8 @@ export function SettingsPage() {
       </div>
 
       <ConnectionSection />
+
+      <BridgeSection />
 
       <SettingsSection
         title="Segundo plano"

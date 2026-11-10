@@ -48,6 +48,8 @@ const api: RendererApi = {
   connectKanban: (input) => ipcRenderer.invoke('kanban:connect', input),
   testKanbanConnection: () => ipcRenderer.invoke('kanban:test-connection'),
   disconnectKanban: () => ipcRenderer.invoke('kanban:disconnect'),
+  getBridgeStatus: () => ipcRenderer.invoke('bridge:get-status'),
+  regenerateBridgeCode: () => ipcRenderer.invoke('bridge:regenerate-code'),
 };
 
 contextBridge.exposeInMainWorld('api', api);

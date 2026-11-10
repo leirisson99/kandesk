@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <title>Card Guard - Opções</title>
+  <style>
+    body { font: 14px system-ui, sans-serif; max-width: 560px; margin: 24px auto; padding: 0 16px; }
+    label { display: block; margin: 12px 0 4px; font-weight: 600; }
+    input[type=text], input[type=time], input[type=number] { padding: 4px 6px; }
+    .row { display: flex; gap: 8px; align-items: center; margin: 4px 0; }
+    small { color: #666; }
+    button { margin-top: 16px; padding: 6px 14px; }
+  </style>
+</head>
+<body>
+  <h1>Card Guard</h1>
+
+  <label for="kbUser">Kanboard: usuário de login</label>
+  <input id="kbUser" type="text" size="40" autocomplete="off" />
+
+  <label for="kbToken">Kanboard: token da API</label>
+  <input id="kbToken" type="password" size="40" autocomplete="off" />
+  <small>No Kanboard: seu perfil &rarr; API &rarr; <b>Gerar um novo token</b>. Fica salvo só neste navegador.</small>
+  <div class="row"><button id="testKb" type="button">Testar conexão</button> <span id="kbMsg"></span></div>
+
+  <label for="myName">Meu nome no Kanboard (opcional)</label>
+  <input id="myName" type="text" size="40" placeholder="vazio = detectar automaticamente" />
+  <small>Como aparece em "Rastreamento de tempo". Só preencha se a detecção falhar.</small>
+
+  <label for="sprintIds">Sprints a monitorar (opcional)</label>
+  <input id="sprintIds" type="text" size="40" placeholder="vazio = todas as de Minhas sprints" />
+  <small>Ids separados por vírgula (o número em /quadro/<b>10526</b>).</small>
+
+  <label>Expediente</label>
+  <div class="row"><input id="useRhNet" type="checkbox" /> Usar as batidas do RH Net (início, almoço e fim dinâmicos)</div>
+  <small>Os horários abaixo valem quando o RH Net estiver indisponível ou desmarcado.</small>
+  <div class="row">Manhã: <input id="s1" type="time" /> até <input id="e1" type="time" /></div>
+  <div class="row">Tarde: <input id="s2" type="time" /> até <input id="e2" type="time" /></div>
+
+  <label>Dias da semana</label>
+  <div id="days" class="row"></div>
+
+  <label>Pausar automaticamente fora do expediente</label>
+  <div class="row"><input id="autoPause" type="checkbox" /> Parar o cronômetro dos meus requisitos em andamento</div>
+
+  <label for="renotify">Repetir aviso a cada (min)</label>
+  <input id="renotify" type="number" min="1" />
+
+  <button id="save">Salvar</button> <span id="msg"></span>
+
+  <h2>Diagnóstico</h2>
+  <button id="check">Checar agora</button>
+  <button id="testNotify">Testar notificação</button>
+  <button id="clearCache">Limpar cache</button>
+  <pre id="report" style="white-space: pre-wrap; background: #f4f4f4; padding: 8px;">(sem checagem ainda)</pre>
+  <script src="guard.js"></script>
+  <script type="module" src="options.js"></script>
+</body>
+</html>

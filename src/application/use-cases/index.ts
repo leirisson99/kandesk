@@ -5,13 +5,16 @@ import type {
   Clock,
   ExecutionRepository,
   IdGenerator,
+  BridgeMonitor,
   CredentialStore,
   KanbanAuthClient,
   Notifier,
+  PairingCodeStore,
   PreferencesRepository,
   TaskRepository,
 } from '../ports';
 import { createAutomationUseCases } from './automations';
+import { createBridgeUseCases } from './bridge';
 import { createConnectionUseCases } from './connection';
 import { createNotificationUseCases } from './notifications';
 
@@ -26,6 +29,8 @@ export interface UseCaseDeps {
   pauseSupported: boolean;
   credentials: CredentialStore;
   kanbanAuth: KanbanAuthClient;
+  pairing: PairingCodeStore;
+  bridge: BridgeMonitor;
   onAutomationsChanged?: () => void;
 }
 
@@ -34,6 +39,7 @@ export function createUseCases(deps: UseCaseDeps) {
     automations: createAutomationUseCases({ ...deps, onChange: deps.onAutomationsChanged }),
     notifications: createNotificationUseCases(deps),
     connection: createConnectionUseCases(deps),
+    bridge: createBridgeUseCases(deps),
     listTasks: (options?: { refresh?: boolean }) => deps.tasks.findAll(options),
     listExecutions: () => deps.executions.findAll(),
     getPreferences: () => deps.preferences.get(),

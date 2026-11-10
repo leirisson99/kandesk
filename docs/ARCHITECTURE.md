@@ -301,6 +301,38 @@ Antes da implementação, documentar para cada operação:
 Não inventar endpoints ou payloads. Usar exclusivamente o contrato
 documentado pela equipe do sistema.
 
+## 9.1 Ponte com a extensão do navegador (protocolo v1)
+
+**Decisão (2026-11-10):** a API por token **não** consegue parar o cronômetro: `setSubtaskEndTime`
+responde HTTP 403 para o perfil `app-user` (`docs/KANBAN_INVESTIGATION.md` §11 #21). A pausa passa a ser
+executada pela extensão do Chrome (`extension/`), que já tem a sessão web do Kanboard. O app agenda e decide;
+a extensão executa.
+
+```text
+Agendador ─▶ KanbanTaskRepository.pause(ref) ─▶ ExtensionGateway (ExtensionBridgeServer)
+                                                     │  servidor HTTP em 127.0.0.1:47615
+Extensão (Chrome) ◀── GET /v1/commands?wait=25 ──────┘  (long-poll)
+   │ lê o estado pela API, pausa pelo formulário web, confere pela API
+   └── POST /v1/results {commandId, outcome, message} ──▶ resolve a pausa no app
+```
+
+- **Rotas** (todas exigem `Authorization: Bearer <código de pareamento>`): `GET /v1/hello`,
+  `GET /v1/commands?wait=N` (até 30 s; 204 se vazio), `POST /v1/results`.
+- **Comando:** `{ id, action: "PAUSE", ref: "<sprint>/<card>" }`. **Resultado:** `APPLIED`, `ALREADY_IN_STATE` ou
+  `FAILED` + mensagem (até 500 caracteres). Contrato em `src/shared/contracts/bridge.ts`; a extensão o repete em
+  `extension/pause-logic.js`. Há um teste de contrato que roda o cliente real contra o servidor real.
+- **Segurança:** só loopback; confere `Host` (DNS rebinding) e `Origin` (só `chrome-extension://`); sem CORS; corpo
+  máx. 4 KB; erros sem detalhes; código de pareamento cifrado com `safeStorage`, comparado em tempo constante e
+  nunca registrado em log. Nenhum token do Kanboard passa pela ponte: a extensão usa o próprio.
+- **Presença:** a extensão só conta como conectada quando **consulta comandos** (`GET /v1/commands`); o teste das opções (`/v1/hello`) não conta.
+- **Falhas:** extensão ausente (sem consulta há mais de 150 s) falha na hora; sem resposta em 90 s também. Ambas
+  viram `ERROR` no histórico, sem executar atrasado.
+- **Retomar (v1):** o app **não** retoma. `resume()` devolve `MANUAL_ACTION_REQUIRED`, o histórico registra `SKIPPED`
+  e o app notifica "Hora de retomar manualmente". Retomar de verdade exigiria capturar o fluxo web de "iniciar".
+- **Limites:** exige Chrome aberto e logado no Kanboard e o app aberto; atraso de até ~1 min se o service worker
+  (MV3) adormecer (alarme de 1 min religa a consulta). O formulário "Pausar" é HTML: se mudar, a pausa falha com erro.
+- **Chave:** `FEATURES.pauseAndResume` continua desligada até o teste de ponta a ponta com um requisito real.
+
 ## 10. Segurança
 
 -   Habilitar `contextIsolation`.

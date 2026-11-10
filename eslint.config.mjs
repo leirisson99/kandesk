@@ -3,7 +3,8 @@ import tseslint from 'typescript-eslint';
 import reactHooks from 'eslint-plugin-react-hooks';
 
 export default tseslint.config(
-  { ignores: ['node_modules', 'out', 'dist', 'release'] },
+  // extencao-exemplo/ é a referência original (não mantida aqui); o código ativo está em extension/.
+  { ignores: ['node_modules', 'out', 'dist', 'release', 'extencao-exemplo'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
@@ -29,5 +30,28 @@ export default tseslint.config(
     files: ['src/renderer/**/*.{ts,tsx}'],
     plugins: { 'react-hooks': reactHooks },
     rules: reactHooks.configs.recommended.rules,
+  },
+  {
+    // Extensão do Chrome (JavaScript puro, módulos ES, executa no navegador).
+    files: ['extension/**/*.js'],
+    languageOptions: {
+      sourceType: 'module',
+      globals: {
+        chrome: 'readonly',
+        document: 'readonly',
+        window: 'readonly',
+        fetch: 'readonly',
+        Response: 'readonly',
+        URL: 'readonly',
+        URLSearchParams: 'readonly',
+        btoa: 'readonly',
+        console: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+      },
+    },
+    rules: {
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+    },
   },
 );

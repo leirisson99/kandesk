@@ -7,8 +7,11 @@ import type { Automation, ExecutionRecord, Task } from '@shared/types/automation
 
 /** Resultado de uma ação sobre uma tarefa. */
 export interface TaskActionResult {
-  /** APPLIED: o estado mudou. ALREADY_IN_STATE: a tarefa já estava no estado pedido. */
-  outcome: 'APPLIED' | 'ALREADY_IN_STATE';
+  /**
+   * APPLIED: o estado mudou. ALREADY_IN_STATE: a tarefa já estava no estado pedido.
+   * MANUAL_ACTION_REQUIRED: o app não executa esta ação; o usuário precisa fazê-la (ex.: retomar).
+   */
+  outcome: 'APPLIED' | 'ALREADY_IN_STATE' | 'MANUAL_ACTION_REQUIRED';
   message: string;
   httpStatus: number | null;
 }
@@ -50,6 +53,31 @@ export interface KanbanUser {
 export interface KanbanAuthClient {
   /** Confirma a credencial no Kanban. Lança AuthError ou CommunicationError. */
   verify(credentials: KanbanCredentials): Promise<KanbanUser>;
+}
+
+/** Pede à extensão do navegador que execute a pausa e espera o resultado. */
+export interface ExtensionGateway {
+  /** Lança CommunicationError se a extensão não estiver conectada ou não responder a tempo. */
+  pause(ref: string): Promise<TaskActionResult>;
+}
+
+/** Estado da ponte com a extensão (somente leitura). */
+export interface BridgeMonitor {
+  getStatus(): {
+    running: boolean;
+    port: number | null;
+    connected: boolean;
+    lastSeenAt: string | null;
+    error: string | null;
+  };
+}
+
+/** Guarda o código de pareamento com a extensão (segredo local; cifrado em disco). */
+export interface PairingCodeStore {
+  /** Devolve o código salvo, ou cria e salva um novo se ainda não existir. */
+  getOrCreate(): Promise<string>;
+  /** Gera um novo código e invalida o anterior. */
+  regenerate(): Promise<string>;
 }
 
 export interface AutomationRepository {

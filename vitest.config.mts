@@ -9,5 +9,5 @@ export default defineConfig({
       '@infrastructure': resolve(import.meta.dirname, 'src/infrastructure'),
     },
   },
-  test: { include: ['src/**/*.test.ts'] },
+  test: { include: ['src/**/*.test.ts', 'extension/**/*.test.js'] },
 });

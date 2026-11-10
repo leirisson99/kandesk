@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { AuthError, CommunicationError, DomainError } from '@application/errors';
-import type { CredentialStore, KanbanAuthClient } from '@application/ports';
+import { AuthError, CommunicationError } from '@application/errors';
+import type { CredentialStore, ExtensionGateway, KanbanAuthClient } from '@application/ports';
 import { KanbanJsonRpcClient } from '../../kanban/jsonrpc-client';
 import { KanbanTaskRepository } from './kanban-task-repository';
 
@@ -11,6 +11,13 @@ type Handler = (params: Record<string, unknown>) => unknown;
 /** Simula o Kanboard: cada método devolve o resultado do handler (ou { error } para falhar). */
 function setup(methods: Record<string, Handler>, { connected = true } = {}) {
   const calls: string[] = [];
+  const paused: string[] = [];
+  const gateway: ExtensionGateway = {
+    pause: async (ref) => {
+      paused.push(ref);
+      return { outcome: 'APPLIED', message: 'Pausado', httpStatus: null };
+    },
+  };
   const fakeFetch = (async (_url: string, init: RequestInit) => {
     const sent = JSON.parse(String(init.body)) as {
       id: number;
@@ -46,10 +53,12 @@ function setup(methods: Record<string, Handler>, { connected = true } = {}) {
     credentials,
     auth,
     { now: () => now },
+    gateway,
   );
   return {
     repo,
     calls,
+    paused,
     advance: (ms: number) => {
       now = new Date(now.getTime() + ms);
     },
@@ -182,9 +191,22 @@ describe('KanbanTaskRepository.findById', () => {
 });
 
 describe('pausa e retomada', () => {
-  it('lançam erro explícito em vez de simular sucesso', async () => {
-    const { repo } = setup(kanban);
-    await expect(repo.pause()).rejects.toBeInstanceOf(DomainError);
-    await expect(repo.resume()).rejects.toThrow(/Nenhuma tarefa foi alterada/);
+  it('a pausa vai para a extensão', async () => {
+    const { repo, paused } = setup(kanban);
+    expect(await repo.pause('10/2')).toEqual({
+      outcome: 'APPLIED',
+      message: 'Pausado',
+      httpStatus: null,
+    });
+    expect(paused).toEqual(['10/2']);
+  });
+
+  it('a retomada é manual: o app só avisa, sem alterar nada', async () => {
+    const { repo, paused, calls } = setup(kanban);
+    const result = await repo.resume();
+    expect(result.outcome).toBe('MANUAL_ACTION_REQUIRED');
+    expect(result.message).toMatch(/manualmente/);
+    expect(paused).toEqual([]);
+    expect(calls).toEqual([]);
   });
 });

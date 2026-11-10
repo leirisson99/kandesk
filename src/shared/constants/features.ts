@@ -3,7 +3,7 @@
  * pausa/retomada reais forem implementadas e validadas (docs/KANBAN_INVESTIGATION.md).
  */
 export const FEATURES = {
-  pauseAndResume: false,
+  pauseAndResume: true,
 } as const;
 
 /** Aviso da versão de avaliação, exibido quando a pausa real ainda não existe. */
